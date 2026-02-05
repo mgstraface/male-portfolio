@@ -9,7 +9,7 @@ const UserSchema = new Schema(
       lowercase: true,
       trim: true,
     },
-    passwordHash: {
+    password: {
       type: String,
       required: true,
     },
@@ -18,12 +18,8 @@ const UserSchema = new Schema(
       enum: ["admin"],
       default: "admin",
     },
-    name: {
-      type: String,
-      default: "",
-    },
   },
   { timestamps: true }
 );
 
-export const User = models.User || model("User", UserSchema);
+export default models.User || model("User", UserSchema);
