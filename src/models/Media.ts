@@ -1,20 +1,34 @@
-import { Schema, model, models } from "mongoose";
+import { Schema, model, models, Types } from "mongoose";
 
 const MediaSchema = new Schema(
   {
-    title: { type: String, default: "" },
-    description: { type: String, default: "" },
-    type: { type: String, enum: ["photo", "video"], required: true },
-    category: { type: Schema.Types.ObjectId, ref: "Category", required: true },
-
-    thumbnailUrl: { type: String, default: "" },
-    mediaUrl: { type: String, default: "" },
-    youtubeUrl: { type: String, default: "" },
-
-    isFeatured: { type: Boolean, default: false },
-    order: { type: Number, default: 0 },
+    title: {
+      type: String,
+      trim: true,
+    },
+    type: {
+      type: String,
+      enum: ["photo", "video"],
+      required: true,
+    },
+    category: {
+      type: Types.ObjectId,
+      ref: "Category",
+      required: true,
+    },
+    url: {
+      type: String,
+      required: true,
+    },
+    thumbnail: {
+      type: String,
+    },
+    isFeatured: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
 
-export const Media = models.Media || model("Media", MediaSchema);
+export default models.Media || model("Media", MediaSchema);
