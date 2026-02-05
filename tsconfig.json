@@ -1,5 +1,6 @@
 {
-  "compilerOptions": {
+ "compilerOptions": {
+    "types": ["node"],
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
@@ -13,16 +14,12 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-   "baseUrl": ".",
-   "ignoreDeprecations": "6.0",
-"paths": {
-  "@/*": ["./src/*"]
-}
+    "plugins": [{ "name": "next" }],
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": [
     "next-env.d.ts",

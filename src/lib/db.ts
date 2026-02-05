@@ -1,10 +1,7 @@
 import mongoose from "mongoose";
+import { getEnv } from "@/lib/env";
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-  throw new Error("❌ MONGODB_URI no está definida");
-}
+const uri = getEnv("MONGODB_URI");
 
 type MongooseCache = {
   conn: typeof mongoose | null;
@@ -13,29 +10,27 @@ type MongooseCache = {
 
 declare global {
   // eslint-disable-next-line no-var
-  var mongoose: MongooseCache | undefined;
+  var mongooseCache: MongooseCache | undefined;
 }
 
-const cached: MongooseCache = global.mongoose || {
+const cached: MongooseCache = global.mongooseCache ?? {
   conn: null,
   promise: null,
 };
 
-global.mongoose = cached;
+global.mongooseCache = cached;
 
-export async function connectDB() {
+async function dbConnect(): Promise<typeof mongoose> {
   if (cached.conn) return cached.conn;
 
-if (!MONGODB_URI) {
-  throw new Error("❌ MONGODB_URI no está definida");
-}
-
-
-
-if (!cached.promise) {
-  cached.promise = mongoose.connect(MONGODB_URI!).then((m) => m);
-}
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(uri, {
+      bufferCommands: false,
+    });
+  }
 
   cached.conn = await cached.promise;
   return cached.conn;
 }
+
+export default dbConnect;
