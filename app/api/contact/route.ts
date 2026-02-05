@@ -44,7 +44,7 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   try {
-    requireAdmin();
+   await requireAdmin();
     await dbConnect();
 
     const { searchParams } = new URL(req.url);

@@ -16,8 +16,10 @@ function isAuthUser(p: JwtPayload): p is JwtPayload & AuthUser {
   );
 }
 
-export function requireAdmin(): AuthUser {
-  const token = cookies().get("token")?.value;
+export async function requireAdmin(): Promise<AuthUser> {
+  const cookieStore = await cookies(); // ✅ en tu Next es async
+  const token = cookieStore.get("token")?.value;
+
   if (!token) throw new Error("UNAUTHORIZED");
 
   const secret = getEnv("JWT_SECRET");
@@ -28,4 +30,3 @@ export function requireAdmin(): AuthUser {
 
   return decoded as AuthUser;
 }
-

@@ -13,7 +13,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    requireAdmin();
+    await requireAdmin();
     await dbConnect();
 
     if (!Types.ObjectId.isValid(params.id)) {
@@ -41,7 +41,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    requireAdmin();
+    await requireAdmin();
     await dbConnect();
 
     if (!Types.ObjectId.isValid(params.id)) {

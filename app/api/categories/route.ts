@@ -32,7 +32,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    requireAdmin();
+    await requireAdmin();
     await dbConnect();
 
     const body = (await req.json()) as CategoryBody;
