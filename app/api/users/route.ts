@@ -29,8 +29,14 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    await requireAdmin();
     await dbConnect();
+
+    const usersCount = await User.countDocuments();
+
+    // 🔒 Si ya hay usuarios, exigir admin
+    if (usersCount > 0) {
+      await requireAdmin();
+    }
 
     const body = (await req.json()) as CreateUserBody;
     const email = (body.email || "").toLowerCase().trim();
