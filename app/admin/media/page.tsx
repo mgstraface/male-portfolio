@@ -27,7 +27,14 @@ type UploadItem = {
 
 type MediaItem = {
   _id: string;
+
+  // legacy
   title?: string;
+
+  // ✅ projects
+  name?: string;
+  description?: string;
+
   type: "photo" | "video";
   category: Category | string;
   url: string;
@@ -65,7 +72,14 @@ export default function AdminMediaPage() {
   // form
   const [type, setType] = useState<"photo" | "video">("photo");
   const [categoryId, setCategoryId] = useState<string>("");
+
+  // legacy title (se sigue usando para todo lo que NO sea projects)
   const [title, setTitle] = useState("");
+
+  // ✅ projects fields
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+
   const [isFeatured, setIsFeatured] = useState(false);
   const [fullVideoUrl, setFullVideoUrl] = useState("");
 
@@ -75,6 +89,11 @@ export default function AdminMediaPage() {
   // inline edit
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
+
+  // ✅ projects inline edit
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+
   const [editFeatured, setEditFeatured] = useState(false);
   const [editFullVideoUrl, setEditFullVideoUrl] = useState("");
 
@@ -90,6 +109,12 @@ export default function AdminMediaPage() {
   const selectedCategoryName = useMemo(() => {
     return categories.find((c) => c._id === categoryId)?.name || "sin-categoria";
   }, [categories, categoryId]);
+
+  // ✅ detectar Projects por nombre de categoría
+  const isProjectsCategory = useMemo(() => {
+    const n = selectedCategoryName.toLowerCase().trim();
+    return n === "projects" || n === "project";
+  }, [selectedCategoryName]);
 
   const safeCategory = useMemo(() => {
     return selectedCategoryName
@@ -141,8 +166,21 @@ export default function AdminMediaPage() {
 
     setUploads([]);
     setFullVideoUrl("");
+
+    // reset de campos
+    setTitle("");
+    setName("");
+    setDescription("");
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
+
+  // cuando cambia la categoría, limpiamos uploads (como ya hacías)
+  useEffect(() => {
+    // y dejamos preparados los inputs (no los borramos por completo para no joder UX)
+    // pero si querés, los podés resetear acá también.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryId]);
 
   const openWidget = () => {
     setError(null);
@@ -208,12 +246,24 @@ export default function AdminMediaPage() {
       return setError("El link del video completo debe empezar con http:// o https://");
     }
 
+    // ✅ validación projects (suave)
+    if (isProjectsCategory) {
+      if (!name.trim()) return setError("Para Projects, completá el Name");
+      if (!description.trim()) return setError("Para Projects, completá la Description");
+    }
+
     setSaving(true);
     try {
       const results = await Promise.all(
         uploads.map(async (u) => {
-          const payload = {
+          const payload: any = {
+            // legacy
             title: title.trim() || u.originalFilename || "",
+
+            // ✅ projects
+            name: isProjectsCategory ? name.trim() : undefined,
+            description: isProjectsCategory ? description.trim() : undefined,
+
             type,
             category: categoryId,
             url: u.url,
@@ -237,7 +287,11 @@ export default function AdminMediaPage() {
       );
 
       setItems((prev) => [...results, ...prev]);
+
+      // reset
       setTitle("");
+      setName("");
+      setDescription("");
       setIsFeatured(false);
       setFullVideoUrl("");
       resetUploads();
@@ -273,7 +327,14 @@ export default function AdminMediaPage() {
 
   const startEdit = (m: MediaItem) => {
     setEditingId(m._id);
+
+    // legacy
     setEditTitle(m.title || "");
+
+    // ✅ projects
+    setEditName(m.name || "");
+    setEditDescription(m.description || "");
+
     setEditFeatured(!!m.isFeatured);
     setEditFullVideoUrl(m.fullVideoUrl || "");
   };
@@ -281,6 +342,8 @@ export default function AdminMediaPage() {
   const cancelEdit = () => {
     setEditingId(null);
     setEditTitle("");
+    setEditName("");
+    setEditDescription("");
     setEditFeatured(false);
     setEditFullVideoUrl("");
   };
@@ -293,13 +356,32 @@ export default function AdminMediaPage() {
       return;
     }
 
+    // detect category name for this item (para decidir si manda name/description)
+    const current = items.find((x) => x._id === id);
+    const currentCatName =
+      current && typeof current.category !== "string" ? (current.category?.name ?? "") : "";
+    const currentIsProjects =
+      (currentCatName || "").toLowerCase().trim() === "projects" ||
+      (currentCatName || "").toLowerCase().trim() === "project";
+
+    if (currentIsProjects) {
+      if (!editName.trim()) return setError("Para Projects, el Name no puede estar vacío");
+      if (!editDescription.trim()) return setError("Para Projects, la Description no puede estar vacía");
+    }
+
     setSaving(true);
     try {
       const res = await fetch(`/api/media/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          // legacy
           title: editTitle.trim(),
+
+          // ✅ projects
+          name: currentIsProjects ? editName.trim() : undefined,
+          description: currentIsProjects ? editDescription.trim() : undefined,
+
           isFeatured: editFeatured,
           fullVideoUrl: editFullVideoUrl.trim(),
         }),
@@ -337,6 +419,8 @@ export default function AdminMediaPage() {
       const catName = typeof m.category === "string" ? "" : (m.category?.name ?? "");
       const haystack = [
         m.title ?? "",
+        m.name ?? "",
+        m.description ?? "",
         catName,
         m.url ?? "",
         m.publicId ?? "",
@@ -391,6 +475,7 @@ export default function AdminMediaPage() {
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-6">
+          {/* legacy title */}
           <div className="md:col-span-2">
             <label className="text-sm font-medium">Título base (opcional)</label>
             <input
@@ -399,6 +484,11 @@ export default function AdminMediaPage() {
               className="mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
               placeholder="Ej: Sesión verano 2026 (si lo dejás vacío usa el nombre del archivo)"
             />
+            {isProjectsCategory && (
+              <p className="mt-1 text-xs text-gray-500">
+                En <b>Projects</b> vamos a usar <b>Name/Description</b> para mostrar.
+              </p>
+            )}
           </div>
 
           <div>
@@ -456,6 +546,30 @@ export default function AdminMediaPage() {
                 placeholder="https://youtube.com/watch?v=... (opcional)"
               />
             </div>
+          )}
+
+          {/* ✅ Projects fields */}
+          {isProjectsCategory && (
+            <>
+              <div className="md:col-span-3">
+                <label className="text-sm font-medium">Name (Project)</label>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
+                  placeholder="Ej: Editorial Verano / Boda / Campaña..."
+                />
+              </div>
+              <div className="md:col-span-3">
+                <label className="text-sm font-medium">Description</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200 min-h-[44px]"
+                  placeholder="Breve descripción del proyecto..."
+                />
+              </div>
+            </>
           )}
         </div>
 
@@ -538,7 +652,7 @@ export default function AdminMediaPage() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 className="mt-1 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-200"
-                placeholder="Título, categoría, nombre de archivo (url/publicId)..."
+                placeholder="Título, name/description, categoría, url/publicId..."
               />
             </div>
 
@@ -592,26 +706,56 @@ export default function AdminMediaPage() {
             {filteredItems.map((m) => {
               const catName = typeof m.category === "string" ? m.category : (m.category?.name ?? "-");
               const isEditing = editingId === m._id;
+              const thisIsProjects = catName.toLowerCase().trim() === "projects" || catName.toLowerCase().trim() === "project";
 
               return (
                 <div key={m._id} className="rounded-2xl border bg-white p-3">
                   <div className="text-xs text-gray-500">{catName}</div>
 
                   {!isEditing ? (
-                    <div className="mt-1 text-sm font-medium">{m.title || "(sin título)"}</div>
+                    <div className="mt-1 text-sm font-medium">
+                      {thisIsProjects ? (m.name || "(sin name)") : (m.title || "(sin título)")}
+                    </div>
                   ) : (
-                    <input
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      className="mt-2 w-full rounded-lg border px-2 py-1 text-sm"
-                      placeholder="Título"
-                    />
+                    <>
+                      {/* legacy title */}
+                      {!thisIsProjects && (
+                        <input
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          className="mt-2 w-full rounded-lg border px-2 py-1 text-sm"
+                          placeholder="Título"
+                        />
+                      )}
+
+                      {/* ✅ projects fields */}
+                      {thisIsProjects && (
+                        <>
+                          <input
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="mt-2 w-full rounded-lg border px-2 py-1 text-sm"
+                            placeholder="Name (Project)"
+                          />
+                          <textarea
+                            value={editDescription}
+                            onChange={(e) => setEditDescription(e.target.value)}
+                            className="mt-2 w-full rounded-lg border px-2 py-1 text-sm min-h-[60px]"
+                            placeholder="Description"
+                          />
+                        </>
+                      )}
+                    </>
+                  )}
+
+                  {!isEditing && thisIsProjects && m.description && (
+                    <p className="mt-1 text-sm text-gray-600 line-clamp-3">{m.description}</p>
                   )}
 
                   <div className="mt-3 overflow-hidden rounded-xl border bg-gray-50">
                     {m.type === "photo" ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={m.url} alt={m.title || "media"} className="h-48 w-full object-cover" />
+                      <img src={m.url} alt={m.title || m.name || "media"} className="h-48 w-full object-cover" />
                     ) : (
                       <video src={m.url} controls className="h-48 w-full object-cover" />
                     )}
@@ -630,12 +774,14 @@ export default function AdminMediaPage() {
 
                   {m.type === "video" && isEditing && (
                     <div className="mt-2">
-                      <label className="text-xs text-gray-600">Link video completo</label>
+                      <label className="text-xs text-gray-600">
+                        {thisIsProjects ? "Link externo (Ver proyecto)" : "Link video completo"}
+                      </label>
                       <input
                         value={editFullVideoUrl}
                         onChange={(e) => setEditFullVideoUrl(e.target.value)}
                         className="mt-1 w-full rounded-lg border px-2 py-1 text-sm"
-                        placeholder="https://youtube.com/watch?v=..."
+                        placeholder="https://..."
                       />
                     </div>
                   )}

@@ -2,37 +2,54 @@ import { Schema, model, models, Types } from "mongoose";
 
 const MediaSchema = new Schema(
   {
-    // Para media general (si querés seguir usando title)
-    title: { type: String, trim: true },
+    // título “técnico” opcional (o nombre de archivo)
+    title: {
+      type: String,
+      trim: true,
+    },
+
+    // ✅ para Projects (y si quieren, para otros)
+    name: {
+      type: String,
+      trim: true,
+    },
+    description: {
+      type: String,
+      trim: true,
+    },
 
     type: {
       type: String,
       enum: ["photo", "video"],
       required: true,
     },
+
     category: {
       type: Types.ObjectId,
       ref: "Category",
       required: true,
     },
+
     url: {
       type: String,
       required: true,
     },
-    thumbnail: { type: String },
 
-    isFeatured: { type: Boolean, default: false },
+    thumbnail: {
+      type: String,
+    },
 
-    // ✅ NUEVO: para projects (y si querés también para otros)
-    name: { type: String, trim: true },
-    description: { type: String, trim: true },
+    isFeatured: {
+      type: Boolean,
+      default: false,
+    },
 
-    // ya lo venías usando para “video completo / link externo”
-    fullVideoUrl: { type: String, trim: true },
-
-    // recomendado si querés borrar Cloudinary confiable
-    publicId: { type: String, trim: true },
+    // Cloudinary helpers
+    publicId: { type: String },
     resourceType: { type: String, enum: ["image", "video"] },
+
+    // ✅ para teasers
+    fullVideoUrl: { type: String, trim: true },
   },
   { timestamps: true }
 );

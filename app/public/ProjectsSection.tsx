@@ -1,110 +1,115 @@
-/* app/public/ProjectsSection.tsx */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import Link from "next/link";
+
 type MediaItem = {
   _id: string;
+  title?: string;
+  name?: string;
+  description?: string;
   type: "photo" | "video";
   url: string;
   thumbnail?: string;
-
-  // NUEVO (para projects)
-  name?: string;
-  description?: string;
-  fullVideoUrl?: string;
-
-  // fallback si no usás name
-  title?: string;
+  isFeatured: boolean;
+  fullVideoUrl?: string; // lo usamos como link externo
 };
 
-export default function ProjectsSection({ items }: { items: MediaItem[] }) {
-  if (!items || items.length === 0) {
-    return (
-      <section className="rounded-3xl border bg-white p-6">
-        <h2 className="text-2xl font-semibold">Projects</h2>
-        <p className="mt-2 text-sm text-gray-600">
-          Creá una categoría <b>Projects</b> y cargá items para que aparezcan acá.
-        </p>
-      </section>
-    );
-  }
-
+export default function ProjectsSection({
+  title = "Projects",
+  subtitle = "",
+  items,
+}: {
+  title?: string;
+  subtitle?: string;
+  items: MediaItem[];
+}) {
   return (
-    <section className="rounded-3xl border bg-white p-6 sm:p-8">
-      <div className="flex items-end justify-between gap-4">
+    <section id="projects" className="rounded-3xl border bg-white p-6 md:p-8">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold">Projects</h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Una selección de trabajos y proyectos destacados.
-          </p>
+          <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
+          {subtitle ? <p className="mt-1 text-sm text-gray-600">{subtitle}</p> : null}
         </div>
+
+        <Link
+          href="#contacto"
+          className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-50"
+        >
+          Contacto
+        </Link>
       </div>
 
-      <div className="mt-6 space-y-6">
-        {items.map((p, idx) => {
-          const title = (p.name || p.title || "Project").trim();
-          const desc = (p.description || "").trim();
-          const reverse = idx % 2 === 1;
+      {items.length === 0 ? (
+        <p className="mt-6 text-sm text-gray-600">
+          Todavía no hay proyectos. Creá una categoría <b>Projects</b> y subí contenido.
+        </p>
+      ) : (
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((p) => {
+            const titleText = (p.name || p.title || "(sin título)").trim();
+            const desc = (p.description || "").trim();
+            const cover = p.type === "video" ? (p.thumbnail || p.url) : p.url;
 
-          return (
-            <article
-              key={p._id}
-              className={`grid gap-5 rounded-3xl border bg-white overflow-hidden lg:grid-cols-2 ${
-                reverse ? "lg:[&>div:first-child]:order-2" : ""
-              }`}
-            >
-              {/* Media */}
-              <div className="relative bg-gray-100">
-                <div className="relative w-full aspect-[16/10] sm:aspect-[16/9]">
-                  {p.type === "photo" ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={p.url}
-                      alt={title}
-                      className="absolute inset-0 h-full w-full object-cover"
-                    />
-                  ) : (
-                    <video
-                      src={p.url}
-                      poster={p.thumbnail}
-                      controls
-                      className="absolute inset-0 h-full w-full object-cover"
-                    />
+            return (
+              <article key={p._id} className="rounded-2xl border bg-white overflow-hidden">
+                <div className="relative h-44 w-full bg-gray-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={cover}
+                    alt={titleText}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  {p.type === "video" && (
+                    <div className="absolute left-3 top-3 rounded-full bg-black/70 px-2 py-1 text-[11px] text-white">
+                      Video
+                    </div>
+                  )}
+                  {p.isFeatured && (
+                    <div className="absolute right-3 top-3 rounded-full bg-white/90 px-2 py-1 text-[11px]">
+                      ⭐ Destacado
+                    </div>
                   )}
                 </div>
-              </div>
 
-              {/* Texto */}
-              <div className="p-6 sm:p-8 flex flex-col justify-center">
-                <div className="text-xs text-gray-500">PROJECT</div>
-                <h3 className="mt-2 text-xl sm:text-2xl font-semibold">{title}</h3>
+                <div className="p-4">
+                  <div className="text-sm font-semibold">{titleText}</div>
+                  {desc ? (
+                    <p className="mt-1 text-sm text-gray-600 line-clamp-3">{desc}</p>
+                  ) : (
+                    <p className="mt-1 text-sm text-gray-400">Sin descripción</p>
+                  )}
 
-                {desc ? (
-                  <p className="mt-3 text-gray-600 leading-relaxed">{desc}</p>
-                ) : (
-                  <p className="mt-3 text-gray-500">
-                    Agregá <b>description</b> para que quede como la referencia.
-                  </p>
-                )}
+                  <div className="mt-4 flex items-center gap-2">
+                    {p.fullVideoUrl ? (
+                      <a
+                        href={p.fullVideoUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-xl bg-gray-900 px-3 py-2 text-sm text-white hover:bg-gray-800"
+                      >
+                        Ver
+                      </a>
+                    ) : (
+                      <a
+                        href="#galeria"
+                        className="rounded-xl bg-gray-900 px-3 py-2 text-sm text-white hover:bg-gray-800"
+                      >
+                        Ver galería
+                      </a>
+                    )}
 
-                <div className="mt-5 flex flex-wrap gap-3">
-                  {p.fullVideoUrl ? (
                     <a
-                      href={p.fullVideoUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="rounded-xl bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-800"
+                      href="#contacto"
+                      className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-50"
                     >
-                      Ver proyecto
+                      Consultar
                     </a>
-                  ) : (
-                    <span className="rounded-xl border px-4 py-2 text-sm text-gray-600">
-                      (sin link)
-                    </span>
-                  )}
+                  </div>
                 </div>
-              </div>
-            </article>
-          );
-        })}
-      </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

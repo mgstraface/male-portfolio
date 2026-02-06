@@ -1,85 +1,62 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import dbConnect from '@/lib/db';
 import Media from "@/models/Media";
-import cloudinary from "@/lib/cloudinary-server";
+import { requireAdmin } from "@/lib/auth";
+import { cloudinaryDestroy } from "@/lib/cloudinary-server"; // tu helper server-side
 
-type Ctx = { params: Promise<{ id: string }> };
+import { z } from "zod";
 
-export async function GET(_req: Request, ctx: Ctx) {
+const UpdateSchema = z.object({
+  title: z.string().optional(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  isFeatured: z.boolean().optional(),
+  fullVideoUrl: z.string().optional(),
+});
+
+export async function PUT(
+  req: Request,
+  ctx: { params: Promise<{ id: string }> } // ✅ Next 16 “params Promise”
+) {
   try {
     await requireAdmin();
     await dbConnect();
 
     const { id } = await ctx.params;
 
-    const item = await Media.findById(id).populate("category");
-    if (!item) {
-      return NextResponse.json({ ok: false, error: "No existe" }, { status: 404 });
+    const body = await req.json();
+    const parsed = UpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { ok: false, error: "Payload inválido", issues: parsed.error.issues },
+        { status: 400 }
+      );
     }
+
+    const update: any = {};
+    if (typeof parsed.data.title === "string") update.title = parsed.data.title.trim();
+    if (typeof parsed.data.name === "string") update.name = parsed.data.name.trim();
+    if (typeof parsed.data.description === "string") update.description = parsed.data.description.trim();
+    if (typeof parsed.data.isFeatured === "boolean") update.isFeatured = parsed.data.isFeatured;
+    if (typeof parsed.data.fullVideoUrl === "string") update.fullVideoUrl = parsed.data.fullVideoUrl.trim();
+
+    const item = await Media.findByIdAndUpdate(id, update, { new: true }).populate("category").lean();
+    if (!item) return NextResponse.json({ ok: false, error: "No existe" }, { status: 404 });
 
     return NextResponse.json({ ok: true, item });
-  } catch (err: unknown) {
-    if (err instanceof Error && err.message === "UNAUTHORIZED") {
-      return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
-    }
-    console.error(err);
-    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
+  } catch (e: any) {
+    console.error(e);
+    const msg = e?.message?.includes("Unauthorized") ? "No autorizado" : "Error actualizando";
+    const status = e?.message?.includes("Unauthorized") ? 401 : 500;
+    return NextResponse.json({ ok: false, error: msg }, { status });
   }
 }
 
-export async function PUT(req: Request, ctx: Ctx) {
-  try {
-    await requireAdmin();
-    await dbConnect();
-
-    const { id } = await ctx.params;
-
-    const body = (await req.json()) as {
-      title?: string;
-      isFeatured?: boolean;
-      fullVideoUrl?: string;
-    };
-
-    const item = await Media.findById(id).populate("category");
-    if (!item) {
-      return NextResponse.json({ ok: false, error: "No existe" }, { status: 404 });
-    }
-
-    if (typeof body.title === "string") {
-      item.title = body.title.trim();
-    }
-
-    if (typeof body.isFeatured === "boolean") {
-      item.isFeatured = body.isFeatured;
-    }
-
-    if (typeof body.fullVideoUrl === "string") {
-      const v = body.fullVideoUrl.trim();
-      if (item.type === "video" && v && !/^https?:\/\//i.test(v)) {
-        return NextResponse.json(
-          { ok: false, error: "fullVideoUrl inválida" },
-          { status: 400 }
-        );
-      }
-      (item as any).fullVideoUrl = v || undefined;
-    }
-
-    await item.save();
-
-    const updated = await Media.findById(id).populate("category");
-    return NextResponse.json({ ok: true, item: updated });
-  } catch (err: unknown) {
-    if (err instanceof Error && err.message === "UNAUTHORIZED") {
-      return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
-    }
-    console.error(err);
-    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
-  }
-}
-
-export async function DELETE(_req: Request, ctx: Ctx) {
+export async function DELETE(
+  _req: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
   try {
     await requireAdmin();
     await dbConnect();
@@ -87,39 +64,25 @@ export async function DELETE(_req: Request, ctx: Ctx) {
     const { id } = await ctx.params;
 
     const item = await Media.findById(id);
-    if (!item) {
-      return NextResponse.json({ ok: false, error: "No existe" }, { status: 404 });
-    }
+    if (!item) return NextResponse.json({ ok: false, error: "No existe" }, { status: 404 });
 
-    const publicId = (item as any).publicId as string | undefined;
-    const resourceType = (item as any).resourceType as "image" | "video" | undefined;
-
-    if (publicId) {
+    // ✅ borrar Cloudinary si tenemos publicId
+    if (item.publicId) {
       try {
-        await cloudinary.uploader.destroy(publicId, {
-          resource_type: resourceType || "image",
-          invalidate: true,
-        });
-
-        if (!resourceType) {
-          await cloudinary.uploader.destroy(publicId, {
-            resource_type: "video",
-            invalidate: true,
-          });
-        }
+        await cloudinaryDestroy(item.publicId, item.resourceType === "video" ? "video" : "image");
       } catch (e) {
-        console.error("Cloudinary destroy error:", e);
+        console.warn("Cloudinary destroy failed:", e);
+        // seguimos igual, pero podrías decidir fallar si querés
       }
     }
 
-    await Media.findByIdAndDelete(id);
+    await Media.deleteOne({ _id: id });
 
     return NextResponse.json({ ok: true });
-  } catch (err: unknown) {
-    if (err instanceof Error && err.message === "UNAUTHORIZED") {
-      return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
-    }
-    console.error(err);
-    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
+  } catch (e: any) {
+    console.error(e);
+    const msg = e?.message?.includes("Unauthorized") ? "No autorizado" : "Error borrando";
+    const status = e?.message?.includes("Unauthorized") ? 401 : 500;
+    return NextResponse.json({ ok: false, error: msg }, { status });
   }
 }

@@ -1,10 +1,25 @@
 import { v2 as cloudinary } from "cloudinary";
-import { getEnv } from "@/lib/env";
 
-cloudinary.config({
-  cloud_name: getEnv("CLOUDINARY_CLOUD_NAME"),
-  api_key: getEnv("CLOUDINARY_API_KEY"),
-  api_secret: getEnv("CLOUDINARY_API_SECRET"),
-});
+function ensureCloudinaryConfigured() {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
-export default cloudinary;
+  if (!cloudName || !apiKey || !apiSecret) {
+    throw new Error("Faltan CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET");
+  }
+
+  cloudinary.config({
+    cloud_name: cloudName,
+    api_key: apiKey,
+    api_secret: apiSecret,
+  });
+}
+
+export async function cloudinaryDestroy(
+  publicId: string,
+  resourceType: "image" | "video" = "image"
+) {
+  ensureCloudinaryConfigured();
+  return cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+}

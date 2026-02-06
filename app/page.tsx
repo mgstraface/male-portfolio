@@ -1,6 +1,7 @@
 import HeroBanner from "./public/HeroBanner";
 import MediaCarousel from "./public/MediaCarousel";
 import ContactSection from "./public/ContactSection";
+import ProjectsSection from "./public/ProjectsSection";
 import { headers } from "next/headers";
 
 type Category = {
@@ -12,7 +13,14 @@ type Category = {
 
 type MediaItem = {
   _id: string;
+
+  // legacy
   title?: string;
+
+  // ✅ projects
+  name?: string;
+  description?: string;
+
   type: "photo" | "video";
   category: Category | string;
   url: string;
@@ -28,7 +36,6 @@ function catName(c: Category | string): string {
 
 // ✅ Next 16: headers() puede ser Promise -> hay que await
 async function getBaseUrl() {
-
   const h = await headers();
 
   const host =
@@ -77,34 +84,46 @@ export default async function HomePage() {
   const categories = cData.ok ? cData.categories || [] : [];
   const items = mData.ok ? mData.items || [] : [];
 
-  const bannerCat = categories.find(
-    (c) => c.active && c.name.toLowerCase() === "banner"
+  // helper: encontrar category por name (case-insensitive)
+  const findCat = (name: string) =>
+    categories.find((c) => c.active && c.name.toLowerCase().trim() === name.toLowerCase().trim());
+
+  const bannerCat = findCat("banner");
+  const carouselCat = findCat("carousel");
+  const projectsCat = findCat("Projects") || findCat("projects");
+
+  const byCat = (cat: Category | undefined, fallbackName: string) => {
+    if (cat) {
+      return items.filter(
+        (m) => typeof m.category !== "string" && m.category?._id === cat._id
+      );
+    }
+    return items.filter((m) => catName(m.category).toLowerCase().trim() === fallbackName.toLowerCase().trim());
+  };
+
+  const bannerItems = byCat(bannerCat, "banner");
+  const carouselItems = byCat(carouselCat, "carousel");
+  const projectItems = byCat(projectsCat, projectsCat ? projectsCat.name : "Projects").concat(
+    // fallback extra: por las dudas que se llame "project"
+    byCat(undefined, "projects")
   );
-
-  const carouselCat = categories.find(
-    (c) => c.active && c.name.toLowerCase() === "carousel"
-  );
-
-  const bannerItems = bannerCat
-    ? items.filter(
-        (m) =>
-          typeof m.category !== "string" && m.category?._id === bannerCat._id
-      )
-    : items.filter((m) => catName(m.category).toLowerCase() === "banner");
-
-  const carouselItems = carouselCat
-    ? items.filter(
-        (m) =>
-          typeof m.category !== "string" && m.category?._id === carouselCat._id
-      )
-    : items.filter((m) => catName(m.category).toLowerCase() === "carousel");
 
   // Hero: destacado o primero (foto o video)
-  const banner =
-    bannerItems.find((x) => x.isFeatured) || bannerItems[0] || null;
+  const banner = bannerItems.find((x) => x.isFeatured) || bannerItems[0] || null;
 
-  // Carrusel: solo fotos en esta primera versión
+  // Carrusel: solo fotos
   const carousel = carouselItems.filter((x) => x.type === "photo");
+
+  // Projects: idealmente mostrar “cards” con name/description + cover
+  // - cover: url (foto) o thumbnail (video) o url mismo si no hay thumbnail
+  // - link: fullVideoUrl (lo reutilizamos como “link externo” si querés)
+  const projects = projectItems
+    .filter((x) => x.type === "photo" || x.type === "video")
+    .sort((a, b) => {
+      const ad = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bd = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bd - ad;
+    });
 
   return (
     <main className="min-h-screen bg-white">
@@ -115,6 +134,12 @@ export default async function HomePage() {
           title="Galería"
           subtitle="Una selección de fotos destacadas"
           items={carousel}
+        />
+
+        <ProjectsSection
+          title="Projects"
+          subtitle="Selección de proyectos y sesiones"
+          items={projects}
         />
 
         <ContactSection />
