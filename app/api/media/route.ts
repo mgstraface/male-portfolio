@@ -1,38 +1,23 @@
 import { NextResponse } from "next/server";
-import { Types } from "mongoose";
 import dbConnect from "@/lib/db";
-import Media from "@/models/Media";
 import { requireAdmin } from "@/lib/auth";
+import Media from "@/models/Media";
 
-type MediaBody = {
-  title?: string;
-  type?: "photo" | "video";
-  category?: string;
-  url?: string;
-  thumbnail?: string;
-  isFeatured?: boolean;
-};
-
-export async function GET(req: Request) {
+export async function GET() {
   try {
+    await requireAdmin();
     await dbConnect();
 
-    const { searchParams } = new URL(req.url);
-    const type = searchParams.get("type");
-    const category = searchParams.get("category");
-    const featured = searchParams.get("featured");
-
-    const filter: Record<string, unknown> = {};
-    if (type === "photo" || type === "video") filter.type = type;
-    if (category && Types.ObjectId.isValid(category)) filter.category = category;
-    if (featured === "true") filter.isFeatured = true;
-
-    const items = await Media.find(filter)
+    const items = await Media.find()
       .populate("category")
       .sort({ createdAt: -1 });
 
     return NextResponse.json({ ok: true, items });
-  } catch {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === "UNAUTHORIZED") {
+      return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
+    }
+    console.error(err);
     return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
   }
 }
@@ -42,37 +27,71 @@ export async function POST(req: Request) {
     await requireAdmin();
     await dbConnect();
 
-    const body = (await req.json()) as MediaBody;
+    const body = (await req.json()) as {
+      title?: string;
+      type?: "photo" | "video";
+      category?: string;
+      url?: string;
+      thumbnail?: string;
+      isFeatured?: boolean;
+      publicId?: string;
+      resourceType?: "image" | "video";
+      fullVideoUrl?: string;
+    };
 
     const type = body.type;
     const category = body.category;
-    const url = (body.url || "").trim();
+    const url = typeof body.url === "string" ? body.url.trim() : "";
 
-    if ((type !== "photo" && type !== "video") || !category || !url) {
+    if (type !== "photo" && type !== "video") {
+      return NextResponse.json({ ok: false, error: "type inválido" }, { status: 400 });
+    }
+    if (!category) {
+      return NextResponse.json({ ok: false, error: "category requerida" }, { status: 400 });
+    }
+    if (!url) {
+      return NextResponse.json({ ok: false, error: "url requerida" }, { status: 400 });
+    }
+
+    const fullVideoUrl =
+      typeof body.fullVideoUrl === "string" ? body.fullVideoUrl.trim() : "";
+
+    if (type === "video" && fullVideoUrl && !/^https?:\/\//i.test(fullVideoUrl)) {
       return NextResponse.json(
-        { ok: false, error: "type, category y url son obligatorios" },
+        { ok: false, error: "fullVideoUrl inválida" },
         { status: 400 }
       );
     }
 
-    if (!Types.ObjectId.isValid(category)) {
-      return NextResponse.json({ ok: false, error: "category inválida" }, { status: 400 });
-    }
+    const resourceType =
+      body.resourceType === "image" || body.resourceType === "video"
+        ? body.resourceType
+        : undefined;
 
-    const created = await Media.create({
-      title: body.title?.trim() || "",
+    const publicId = typeof body.publicId === "string" ? body.publicId.trim() : "";
+
+    const item = await Media.create({
+      title: typeof body.title === "string" ? body.title.trim() : "",
       type,
       category,
       url,
-      thumbnail: body.thumbnail?.trim() || undefined,
-      isFeatured: Boolean(body.isFeatured),
+      thumbnail: typeof body.thumbnail === "string" ? body.thumbnail.trim() : "",
+      isFeatured: !!body.isFeatured,
+
+      publicId: publicId || undefined,
+      resourceType,
+      fullVideoUrl: type === "video" ? (fullVideoUrl || undefined) : undefined,
     });
 
-    return NextResponse.json({ ok: true, item: created }, { status: 201 });
+    // opcional: devolver populate para que el front muestre nombre categoría
+    const populated = await Media.findById(item._id).populate("category");
+
+    return NextResponse.json({ ok: true, item: populated }, { status: 201 });
   } catch (err: unknown) {
     if (err instanceof Error && err.message === "UNAUTHORIZED") {
       return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
     }
+    console.error(err);
     return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
   }
 }
