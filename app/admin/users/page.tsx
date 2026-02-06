@@ -178,8 +178,8 @@ export default function AdminUsersPage() {
           <p className="mt-4 text-sm text-gray-600">No hay usuarios.</p>
         ) : (
           <div className="mt-4 grid gap-3">
-            {users.map((u) => (
-              <div key={u._id} className="flex items-center justify-between rounded-xl border p-3">
+            {users?.map((u) => (
+              <div key={u._id+1} className="flex items-center justify-between rounded-xl border p-3">
                 <div>
                   <div className="text-sm font-medium">{u.email}</div>
                   <div className="text-xs text-gray-500">{u.role}</div>
