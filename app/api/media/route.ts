@@ -5,7 +5,7 @@ import Media from "@/models/Media";
 
 export async function GET() {
   try {
-    await requireAdmin();
+
     await dbConnect();
 
     const items = await Media.find().populate("category").sort({ createdAt: -1 });

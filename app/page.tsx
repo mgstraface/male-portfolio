@@ -3,10 +3,6 @@ import MediaCarousel from "./public/MediaCarousel";
 import ContactSection from "./public/ContactSection";
 import { headers } from "next/headers";
 
-/* =========================
-   TYPES
-========================= */
-
 type Category = {
   _id: string;
   name: string;
@@ -26,45 +22,44 @@ type MediaItem = {
   createdAt?: string;
 };
 
-/* =========================
-   HELPERS SERVER-SIDE
-========================= */
-
-function getBaseUrl() {
-  const h = headers();
-  const host = h.get("host");
-
-  if (!host) {
-    throw new Error("No se pudo determinar el host");
-  }
-
-  const protocol =
-    process.env.NODE_ENV === "development" ? "http" : "https";
-
-  return `${protocol}://${host}`;
-}
-
-async function getJson<T>(path: string): Promise<T> {
-  const baseUrl = getBaseUrl();
-
-  const res = await fetch(`${baseUrl}${path}`, {
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    throw new Error(`Error fetch ${path}`);
-  }
-
-  return res.json();
-}
-
 function catName(c: Category | string): string {
   return typeof c === "string" ? c : c?.name || "";
 }
 
-/* =========================
-   PAGE
-========================= */
+// ✅ Next 16: headers() puede ser Promise -> hay que await
+async function getBaseUrl() {
+
+  const h = await headers();
+
+  const host =
+    h.get("x-forwarded-host") ||
+    h.get("host") ||
+    process.env.APP_URL?.replace(/^https?:\/\//, "");
+
+  if (!host) {
+    // fallback dev
+    return "http://localhost:3000";
+  }
+
+  const proto =
+    h.get("x-forwarded-proto") ||
+    (process.env.NODE_ENV === "development" ? "http" : "https");
+
+  return `${proto}://${host}`;
+}
+
+async function getJson<T>(path: string): Promise<T> {
+  const baseUrl = await getBaseUrl();
+  const url = new URL(path, baseUrl);
+
+  const res = await fetch(url, { cache: "no-store" });
+
+  if (!res.ok) {
+    throw new Error(`Error fetch ${path} (${res.status})`);
+  }
+
+  return res.json();
+}
 
 export default async function HomePage() {
   const cData = await getJson<{
@@ -79,8 +74,8 @@ export default async function HomePage() {
     error?: string;
   }>("/api/media");
 
-  const categories = cData.ok ? cData.categories ?? [] : [];
-  const items = mData.ok ? mData.items ?? [] : [];
+  const categories = cData.ok ? cData.categories || [] : [];
+  const items = mData.ok ? mData.items || [] : [];
 
   const bannerCat = categories.find(
     (c) => c.active && c.name.toLowerCase() === "banner"
@@ -93,31 +88,23 @@ export default async function HomePage() {
   const bannerItems = bannerCat
     ? items.filter(
         (m) =>
-          typeof m.category !== "string" &&
-          m.category?._id === bannerCat._id
+          typeof m.category !== "string" && m.category?._id === bannerCat._id
       )
-    : items.filter(
-        (m) => catName(m.category).toLowerCase() === "banner"
-      );
+    : items.filter((m) => catName(m.category).toLowerCase() === "banner");
 
   const carouselItems = carouselCat
     ? items.filter(
         (m) =>
-          typeof m.category !== "string" &&
-          m.category?._id === carouselCat._id
+          typeof m.category !== "string" && m.category?._id === carouselCat._id
       )
-    : items.filter(
-        (m) => catName(m.category).toLowerCase() === "carousel"
-      );
+    : items.filter((m) => catName(m.category).toLowerCase() === "carousel");
 
+  // Hero: destacado o primero (foto o video)
   const banner =
-    bannerItems.find((x) => x.isFeatured) ??
-    bannerItems[0] ??
-    null;
+    bannerItems.find((x) => x.isFeatured) || bannerItems[0] || null;
 
-  const carousel = carouselItems.filter(
-    (x) => x.type === "photo"
-  );
+  // Carrusel: solo fotos en esta primera versión
+  const carousel = carouselItems.filter((x) => x.type === "photo");
 
   return (
     <main className="min-h-screen bg-white">

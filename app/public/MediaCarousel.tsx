@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type MediaItem = {
   _id: string;
   title?: string;
+  type: "photo" | "video";
   url: string;
+  thumbnail?: string;
 };
 
 export default function MediaCarousel({
@@ -17,71 +19,130 @@ export default function MediaCarousel({
   subtitle?: string;
   items: MediaItem[];
 }) {
-  const ref = useRef<HTMLDivElement | null>(null);
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const count = items.length;
 
-  const canRender = useMemo(() => items && items.length > 0, [items]);
+  // Mantener index válido si cambia el listado
+  useEffect(() => {
+    if (count === 0) setIndex(0);
+    else if (index > count - 1) setIndex(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [count]);
 
-  const scrollByCards = (dir: "left" | "right") => {
-    const el = ref.current;
-    if (!el) return;
-    const amount = Math.max(280, Math.floor(el.clientWidth * 0.8));
-    el.scrollBy({ left: dir === "left" ? -amount : amount, behavior: "smooth" });
+  const canAutoplay = count > 1;
+
+  const next = () => {
+    if (count === 0) return;
+    setIndex((i) => (i + 1) % count);
   };
 
-  return (
-    <section id="galeria" className="space-y-4">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-semibold">{title}</h2>
-          {subtitle ? <p className="mt-1 text-sm text-gray-600">{subtitle}</p> : null}
-        </div>
+  const prev = () => {
+    if (count === 0) return;
+    setIndex((i) => (i - 1 + count) % count);
+  };
 
-        <div className="flex gap-2">
-          <button
-            onClick={() => scrollByCards("left")}
-            className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-50"
-            type="button"
-          >
-            ←
-          </button>
-          <button
-            onClick={() => scrollByCards("right")}
-            className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-50"
-            type="button"
-          >
-            →
-          </button>
-        </div>
+  // ✅ Autoplay real (cambia index)
+  useEffect(() => {
+    if (!canAutoplay || paused) return;
+    const id = window.setInterval(() => {
+      setIndex((i) => (i + 1) % count);
+    }, 3500);
+
+    return () => window.clearInterval(id);
+  }, [paused, canAutoplay, count]);
+
+return (
+  <section
+    id="galeria"
+    className="rounded-3xl border bg-white p-5"
+    onMouseEnter={() => setPaused(true)}
+    onMouseLeave={() => setPaused(false)}
+  >
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <h2 className="text-xl font-semibold">{title}</h2>
+        {subtitle ? (
+          <p className="mt-1 text-sm text-gray-600">{subtitle}</p>
+        ) : null}
       </div>
 
-      <div className="rounded-3xl border bg-white p-4">
-        {!canRender ? (
-          <div className="rounded-2xl border bg-gray-50 p-6 text-sm text-gray-600">
-            Subí fotos a la categoría <b>Carousel</b> para que aparezcan acá.
-          </div>
-        ) : (
+      <div className="flex items-center gap-2">
+        <button
+          onClick={prev}
+          disabled={count <= 1}
+          className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+        >
+          ←
+        </button>
+        <button
+          onClick={next}
+          disabled={count <= 1}
+          className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+        >
+          →
+        </button>
+      </div>
+    </div>
+
+    {count === 0 ? (
+      <p className="mt-4 text-sm text-gray-600">
+        No hay fotos para mostrar todavía.
+      </p>
+    ) : (
+      <>
+        {/* 🔥 VIEWPORT SIN BORDE NI PADDING */}
+        <div className="mt-4 overflow-hidden rounded-2xl">
           <div
-            ref={ref}
-            className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2"
-            style={{ scrollbarWidth: "thin" }}
+            className="flex transition-transform duration-700 ease-in-out"
+            style={{ transform: `translateX(-${index * 100}%)` }}
           >
             {items.map((m) => (
-              <div
-                key={m._id}
-                className="snap-start shrink-0 w-[240px] sm:w-[300px] lg:w-[340px]"
-              >
-                <div className="rounded-2xl border overflow-hidden bg-gray-50">
+              <div key={m._id} className="w-full shrink-0">
+                {/* ALTURA CONTROLADA */}
+                <div className="relative h-[420px] md:h-[520px]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={m.url} alt={m.title || "media"} className="h-[320px] w-full object-cover" />
-                </div>
-                <div className="mt-2 text-sm font-medium">
-                  {m.title || "—"}
+                  <img
+                    src={m.url}
+                    alt={m.title || "foto"}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+
+                  {/* OPCIONAL: overlay con título */}
+                  {m.title && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/40 px-4 py-3 text-white text-sm">
+                      {m.title}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
+        </div>
+
+        {/* DOTS + AUTOPLAY */}
+        {count > 1 && (
+          <div className="mt-3 flex items-center justify-between">
+            <div className="flex gap-2">
+              {items.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setIndex(i)}
+                  className={`h-2 w-2 rounded-full ${
+                    i === index ? "bg-gray-900" : "bg-gray-300"
+                  }`}
+                />
+              ))}
+            </div>
+
+            <div className="text-xs text-gray-500">
+              Autoplay {paused ? "(pausado)" : "(activo)"}
+            </div>
+          </div>
         )}
-      </div>
-    </section>
-  );
+      </>
+    )}
+  </section>
+);
+
 }
