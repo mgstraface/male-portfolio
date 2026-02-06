@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/db";
+import dbConnect from "@/lib/db";
 
 
 
 export async function GET() {
   try {
-    const conn = await connectDB();
+    const conn = await dbConnect();
 
     return NextResponse.json({
       ok: true,

@@ -17,6 +17,14 @@ type Category = {
   active: boolean;
 };
 
+type UploadItem = {
+  url: string;
+  publicId: string;
+  resourceType: "image" | "video";
+  thumbnail?: string;
+  originalFilename?: string;
+};
+
 type MediaItem = {
   _id: string;
   title?: string;
@@ -27,6 +35,7 @@ type MediaItem = {
   isFeatured: boolean;
   publicId?: string;
   resourceType?: "image" | "video";
+  fullVideoUrl?: string;
   createdAt?: string;
 };
 
@@ -45,7 +54,7 @@ type MediaOneResponse =
 export default function AdminMediaPage() {
   const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
   const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
-  const FOLDER = process.env.NEXT_PUBLIC_CLOUDINARY_FOLDER || undefined;
+  const BASE_FOLDER = process.env.NEXT_PUBLIC_CLOUDINARY_FOLDER || "male-portfolio";
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<MediaItem[]>([]);
@@ -58,16 +67,41 @@ export default function AdminMediaPage() {
   const [categoryId, setCategoryId] = useState<string>("");
   const [title, setTitle] = useState("");
   const [isFeatured, setIsFeatured] = useState(false);
+  const [fullVideoUrl, setFullVideoUrl] = useState("");
 
-  // cloudinary result
-  const [uploadedUrl, setUploadedUrl] = useState<string>("");
-  const [uploadedPublicId, setUploadedPublicId] = useState<string>("");
-  const [uploadedResourceType, setUploadedResourceType] = useState<"image" | "video" | "">("");
-  const [uploadedThumb, setUploadedThumb] = useState<string>("");
+  // multiple uploads
+  const [uploads, setUploads] = useState<UploadItem[]>([]);
+
+  // inline edit
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editFeatured, setEditFeatured] = useState(false);
+  const [editFullVideoUrl, setEditFullVideoUrl] = useState("");
+
+  // ✅ FILTERS
+  const [q, setQ] = useState("");
+  const [filterType, setFilterType] = useState<"all" | "photo" | "video">("all");
+  const [filterCategoryId, setFilterCategoryId] = useState<string>("all");
 
   const filteredCategories = useMemo(() => {
     return categories.filter((c) => c.active && c.type === type);
   }, [categories, type]);
+
+  const selectedCategoryName = useMemo(() => {
+    return categories.find((c) => c._id === categoryId)?.name || "sin-categoria";
+  }, [categories, categoryId]);
+
+  const safeCategory = useMemo(() => {
+    return selectedCategoryName
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-_]/g, "");
+  }, [selectedCategoryName]);
+
+  const folder = useMemo(() => {
+    return `${BASE_FOLDER}/${type === "photo" ? "photos" : "videos"}/${safeCategory}`;
+  }, [BASE_FOLDER, type, safeCategory]);
 
   const loadAll = async () => {
     setLoading(true);
@@ -104,6 +138,9 @@ export default function AdminMediaPage() {
   useEffect(() => {
     const first = categories.find((x) => x.active && x.type === type);
     if (first) setCategoryId(first._id);
+
+    setUploads([]);
+    setFullVideoUrl("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
 
@@ -114,7 +151,10 @@ export default function AdminMediaPage() {
       setError("Faltan NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME / NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET");
       return;
     }
-
+    if (!categoryId) {
+      setError("Elegí una categoría antes de subir");
+      return;
+    }
     if (!window.cloudinary) {
       setError("Cloudinary widget no está cargado. Verificá app/admin/layout.tsx (Script).");
       return;
@@ -124,27 +164,31 @@ export default function AdminMediaPage() {
       {
         cloudName: CLOUD_NAME,
         uploadPreset: UPLOAD_PRESET,
-        folder: FOLDER,
-        resourceType: type === "photo" ? "image" : "video",
-        multiple: false,
+        folder,
+        multiple: true,
+        maxFiles: 50,
         sources: ["local", "url", "camera"],
+        resourceType: "auto",
       },
       (err: any, result: any) => {
         if (err) {
+          console.error(err);
           setError("Error subiendo a Cloudinary");
           return;
         }
+
         if (result && result.event === "success") {
           const info = result.info;
-          setUploadedUrl(info.secure_url);
-          setUploadedPublicId(info.public_id);
-          setUploadedResourceType(info.resource_type);
 
-          if (info.resource_type === "video") {
-            setUploadedThumb(info.thumbnail_url || "");
-          } else {
-            setUploadedThumb("");
-          }
+          const newItem: UploadItem = {
+            url: info.secure_url,
+            publicId: info.public_id,
+            resourceType: info.resource_type,
+            thumbnail: info.thumbnail_url || "",
+            originalFilename: info.original_filename || "",
+          };
+
+          setUploads((prev) => [newItem, ...prev]);
         }
       }
     );
@@ -152,58 +196,60 @@ export default function AdminMediaPage() {
     widget.open();
   };
 
-  const resetUpload = () => {
-    setUploadedUrl("");
-    setUploadedPublicId("");
-    setUploadedResourceType("");
-    setUploadedThumb("");
-  };
+  const resetUploads = () => setUploads([]);
 
-  const createMedia = async () => {
+  const createMediaBatch = async () => {
     setError(null);
 
     if (!categoryId) return setError("Elegí una categoría");
-    if (!uploadedUrl) return setError("Primero subí un archivo (Cloudinary)");
+    if (uploads.length === 0) return setError("Primero subí archivos (Cloudinary)");
+
+    if (type === "video" && fullVideoUrl.trim() && !/^https?:\/\//i.test(fullVideoUrl.trim())) {
+      return setError("El link del video completo debe empezar con http:// o https://");
+    }
 
     setSaving(true);
     try {
-      const payload = {
-        title: title.trim(),
-        type,
-        category: categoryId,
-        url: uploadedUrl,
-        thumbnail: uploadedThumb || undefined,
-        isFeatured,
-        publicId: uploadedPublicId || undefined,
-        resourceType: uploadedResourceType || undefined,
-      };
+      const results = await Promise.all(
+        uploads.map(async (u) => {
+          const payload = {
+            title: title.trim() || u.originalFilename || "",
+            type,
+            category: categoryId,
+            url: u.url,
+            thumbnail: u.resourceType === "video" ? (u.thumbnail || "") : "",
+            isFeatured,
+            publicId: u.publicId,
+            resourceType: u.resourceType,
+            fullVideoUrl: type === "video" ? (fullVideoUrl.trim() || undefined) : undefined,
+          };
 
-      const res = await fetch("/api/media", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+          const res = await fetch("/api/media", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
 
-      const data = (await res.json()) as MediaOneResponse;
+          const data = (await res.json()) as MediaOneResponse;
+          if (!res.ok || !data.ok) throw new Error(!data.ok ? data.error : "Error al crear media");
+          return data.item;
+        })
+      );
 
-      if (!res.ok || !data.ok) {
-        setError(!data.ok ? data.error : "Error al crear media");
-        return;
-      }
-
-      setItems((prev) => [data.item, ...prev]);
+      setItems((prev) => [...results, ...prev]);
       setTitle("");
       setIsFeatured(false);
-      resetUpload();
-    } catch {
-      setError("Error de red al crear media");
+      setFullVideoUrl("");
+      resetUploads();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error al guardar en DB");
     } finally {
       setSaving(false);
     }
   };
 
   const deleteMedia = async (id: string) => {
-    const ok = confirm("¿Borrar este item de media?");
+    const ok = confirm("¿Borrar este item de media? (DB + Cloudinary)");
     if (!ok) return;
 
     setSaving(true);
@@ -225,6 +271,90 @@ export default function AdminMediaPage() {
     }
   };
 
+  const startEdit = (m: MediaItem) => {
+    setEditingId(m._id);
+    setEditTitle(m.title || "");
+    setEditFeatured(!!m.isFeatured);
+    setEditFullVideoUrl(m.fullVideoUrl || "");
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditTitle("");
+    setEditFeatured(false);
+    setEditFullVideoUrl("");
+  };
+
+  const saveEdit = async (id: string) => {
+    setError(null);
+
+    if (editFullVideoUrl.trim() && !/^https?:\/\//i.test(editFullVideoUrl.trim())) {
+      setError("El link del video completo debe empezar con http:// o https://");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/media/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editTitle.trim(),
+          isFeatured: editFeatured,
+          fullVideoUrl: editFullVideoUrl.trim(),
+        }),
+      });
+
+      const data = (await res.json()) as MediaOneResponse;
+
+      if (!res.ok || !data.ok) {
+        setError(!data.ok ? data.error : "Error al guardar");
+        return;
+      }
+
+      setItems((prev) => prev.map((x) => (x._id === id ? data.item : x)));
+      cancelEdit();
+    } catch {
+      setError("Error de red al guardar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ✅ computed filtered list
+  const filteredItems = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return items.filter((m) => {
+      if (filterType !== "all" && m.type !== filterType) return false;
+
+      if (filterCategoryId !== "all") {
+        const catId = typeof m.category === "string" ? m.category : m.category?._id;
+        if (catId !== filterCategoryId) return false;
+      }
+
+      if (!needle) return true;
+
+      const catName = typeof m.category === "string" ? "" : (m.category?.name ?? "");
+      const haystack = [
+        m.title ?? "",
+        catName,
+        m.url ?? "",
+        m.publicId ?? "",
+        m.fullVideoUrl ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(needle);
+    });
+  }, [items, q, filterType, filterCategoryId]);
+
+  const clearFilters = () => {
+    setQ("");
+    setFilterType("all");
+    setFilterCategoryId("all");
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -234,7 +364,7 @@ export default function AdminMediaPage() {
           </Link>
           <h1 className="mt-2 text-2xl font-semibold">Media</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Subí fotos y videos a Cloudinary y guardalos en la base.
+            Subí fotos y videos (teasers) a Cloudinary y guardalos en la base.
           </p>
         </div>
 
@@ -253,20 +383,21 @@ export default function AdminMediaPage() {
         </div>
       )}
 
+      {/* CREATE */}
       <div className="rounded-2xl border bg-white p-5">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">Nuevo item</h2>
+          <h2 className="text-lg font-medium">Nueva carga</h2>
           <span className="text-xs text-gray-500">{saving ? "Guardando..." : ""}</span>
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-6">
           <div className="md:col-span-2">
-            <label className="text-sm font-medium">Título (opcional)</label>
+            <label className="text-sm font-medium">Título base (opcional)</label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
-              placeholder="Ej: Editorial verano 2026"
+              placeholder="Ej: Sesión verano 2026 (si lo dejás vacío usa el nombre del archivo)"
             />
           </div>
 
@@ -278,7 +409,7 @@ export default function AdminMediaPage() {
               className="mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
             >
               <option value="photo">Foto</option>
-              <option value="video">Video</option>
+              <option value="video">Video (teaser)</option>
             </select>
           </div>
 
@@ -286,7 +417,10 @@ export default function AdminMediaPage() {
             <label className="text-sm font-medium">Categoría</label>
             <select
               value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
+              onChange={(e) => {
+                setCategoryId(e.target.value);
+                setUploads([]);
+              }}
               className="mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
             >
               <option value="">Seleccionar...</option>
@@ -296,6 +430,9 @@ export default function AdminMediaPage() {
                 </option>
               ))}
             </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Subidas irán a: <span className="font-mono">{folder}</span>
+            </p>
           </div>
 
           <div className="flex items-end gap-3">
@@ -308,6 +445,18 @@ export default function AdminMediaPage() {
               Destacado
             </label>
           </div>
+
+          {type === "video" && (
+            <div className="md:col-span-6">
+              <label className="text-sm font-medium">Link a video completo (YouTube, etc.)</label>
+              <input
+                value={fullVideoUrl}
+                onChange={(e) => setFullVideoUrl(e.target.value)}
+                className="mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
+                placeholder="https://youtube.com/watch?v=... (opcional)"
+              />
+            </div>
+          )}
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -316,69 +465,148 @@ export default function AdminMediaPage() {
             className="rounded-xl bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-800"
             type="button"
           >
-            Subir a Cloudinary
+            Subir {type === "photo" ? "fotos" : "teasers"} a Cloudinary (multi)
           </button>
 
-          {uploadedUrl && (
+          {uploads.length > 0 && (
             <>
-              <span className="text-sm text-gray-700">✅ Archivo subido</span>
+              <span className="text-sm text-gray-700">✅ Subidos: {uploads.length}</span>
               <button
-                onClick={resetUpload}
+                onClick={resetUploads}
                 className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
                 type="button"
               >
-                Reemplazar
+                Limpiar
               </button>
             </>
           )}
 
           <button
-            onClick={() => void createMedia()}
-            disabled={saving || !uploadedUrl || !categoryId}
+            onClick={() => void createMediaBatch()}
+            disabled={saving || uploads.length === 0 || !categoryId}
             className="ml-auto rounded-xl bg-emerald-600 px-4 py-2 text-sm text-white hover:bg-emerald-700 disabled:opacity-50"
             type="button"
           >
-            Guardar en DB
+            Guardar en DB ({uploads.length || 0})
           </button>
         </div>
 
-        {uploadedUrl && (
+        {uploads.length > 0 && (
           <div className="mt-4 rounded-2xl border bg-gray-50 p-4">
-            <div className="text-sm font-medium">Preview</div>
-            <div className="mt-3">
-              {type === "photo" ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={uploadedUrl} alt="preview" className="max-h-72 rounded-xl border" />
-              ) : (
-                <video src={uploadedUrl} controls className="max-h-72 rounded-xl border" />
-              )}
-            </div>
+            <div className="text-sm font-medium">Preview subidos</div>
 
-            <div className="mt-2 text-xs text-gray-600">
-              <div>publicId: {uploadedPublicId || "-"}</div>
-              <div>resourceType: {uploadedResourceType || "-"}</div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {uploads.map((u) => (
+                <div key={u.publicId} className="rounded-xl border bg-white p-2">
+                  <div className="text-xs text-gray-500 truncate">
+                    {u.originalFilename || u.publicId}
+                  </div>
+                  <div className="mt-2 overflow-hidden rounded-lg border bg-gray-50">
+                    {u.resourceType === "image" ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={u.url} alt="preview" className="h-40 w-full object-cover" />
+                    ) : (
+                      <video src={u.url} controls className="h-40 w-full object-cover" />
+                    )}
+                  </div>
+                  <div className="mt-2 text-[11px] text-gray-600">
+                    <div className="truncate">publicId: {u.publicId}</div>
+                    <div>resourceType: {u.resourceType}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
       </div>
 
+      {/* LIST */}
       <div className="rounded-2xl border bg-white p-5">
-        <h2 className="text-lg font-medium">Listado</h2>
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-lg font-medium">Listado</h2>
+            <p className="mt-1 text-xs text-gray-500">
+              Mostrando {filteredItems.length} de {items.length}
+            </p>
+          </div>
+
+          {/* ✅ FILTER BAR */}
+          <div className="grid gap-2 md:grid-cols-4 md:items-end">
+            <div className="md:col-span-2">
+              <label className="text-xs text-gray-600">Buscar</label>
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                className="mt-1 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-200"
+                placeholder="Título, categoría, nombre de archivo (url/publicId)..."
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-600">Tipo</label>
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as any)}
+                className="mt-1 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-200"
+              >
+                <option value="all">Todos</option>
+                <option value="photo">Fotos</option>
+                <option value="video">Videos</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-600">Categoría</label>
+              <select
+                value={filterCategoryId}
+                onChange={(e) => setFilterCategoryId(e.target.value)}
+                className="mt-1 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-200"
+              >
+                <option value="all">Todas</option>
+                {categories
+                  .filter((c) => c.active)
+                  .map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name} ({c.type})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <button
+              onClick={clearFilters}
+              className="md:col-span-4 rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
+              type="button"
+            >
+              Limpiar filtros
+            </button>
+          </div>
+        </div>
 
         {loading ? (
           <p className="mt-4 text-sm text-gray-600">Cargando...</p>
-        ) : items.length === 0 ? (
-          <p className="mt-4 text-sm text-gray-600">No hay media todavía.</p>
+        ) : filteredItems.length === 0 ? (
+          <p className="mt-4 text-sm text-gray-600">No hay resultados.</p>
         ) : (
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((m) => {
-              const catName =
-                typeof m.category === "string" ? m.category : (m.category?.name ?? "-");
+            {filteredItems.map((m) => {
+              const catName = typeof m.category === "string" ? m.category : (m.category?.name ?? "-");
+              const isEditing = editingId === m._id;
 
               return (
                 <div key={m._id} className="rounded-2xl border bg-white p-3">
                   <div className="text-xs text-gray-500">{catName}</div>
-                  <div className="mt-1 text-sm font-medium">{m.title || "(sin título)"}</div>
+
+                  {!isEditing ? (
+                    <div className="mt-1 text-sm font-medium">{m.title || "(sin título)"}</div>
+                  ) : (
+                    <input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="mt-2 w-full rounded-lg border px-2 py-1 text-sm"
+                      placeholder="Título"
+                    />
+                  )}
 
                   <div className="mt-3 overflow-hidden rounded-xl border bg-gray-50">
                     {m.type === "photo" ? (
@@ -389,16 +617,85 @@ export default function AdminMediaPage() {
                     )}
                   </div>
 
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-xs text-gray-600">{m.isFeatured ? "⭐ Destacado" : ""}</span>
-
-                    <button
-                      onClick={() => void deleteMedia(m._id)}
-                      disabled={saving}
-                      className="rounded-lg border px-2 py-1 text-sm hover:bg-gray-100 disabled:opacity-50"
+                  {m.type === "video" && !isEditing && m.fullVideoUrl && (
+                    <a
+                      className="mt-2 block text-sm text-blue-600 hover:underline"
+                      href={m.fullVideoUrl}
+                      target="_blank"
+                      rel="noreferrer"
                     >
-                      Borrar
-                    </button>
+                      Ver video completo
+                    </a>
+                  )}
+
+                  {m.type === "video" && isEditing && (
+                    <div className="mt-2">
+                      <label className="text-xs text-gray-600">Link video completo</label>
+                      <input
+                        value={editFullVideoUrl}
+                        onChange={(e) => setEditFullVideoUrl(e.target.value)}
+                        className="mt-1 w-full rounded-lg border px-2 py-1 text-sm"
+                        placeholder="https://youtube.com/watch?v=..."
+                      />
+                    </div>
+                  )}
+
+                  <div className="mt-3 flex items-center justify-between">
+                    {!isEditing ? (
+                      <span className="text-xs text-gray-600">{m.isFeatured ? "⭐ Destacado" : ""}</span>
+                    ) : (
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={editFeatured}
+                          onChange={(e) => setEditFeatured(e.target.checked)}
+                        />
+                        Destacado
+                      </label>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      {!isEditing ? (
+                        <>
+                          <button
+                            onClick={() => startEdit(m)}
+                            disabled={saving}
+                            className="rounded-lg border px-2 py-1 text-sm hover:bg-gray-100 disabled:opacity-50"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => void deleteMedia(m._id)}
+                            disabled={saving}
+                            className="rounded-lg border px-2 py-1 text-sm hover:bg-gray-100 disabled:opacity-50"
+                          >
+                            Borrar
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => void saveEdit(m._id)}
+                            disabled={saving}
+                            className="rounded-lg bg-emerald-600 px-2 py-1 text-sm text-white hover:bg-emerald-700 disabled:opacity-50"
+                          >
+                            Guardar
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            disabled={saving}
+                            className="rounded-lg border px-2 py-1 text-sm hover:bg-gray-100 disabled:opacity-50"
+                          >
+                            Cancelar
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-2 text-[11px] text-gray-600">
+                    <div className="truncate">publicId: {m.publicId || "-"}</div>
+                    <div>resourceType: {m.resourceType || "-"}</div>
                   </div>
                 </div>
               );

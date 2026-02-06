@@ -8,10 +8,7 @@ export async function GET() {
     await requireAdmin();
     await dbConnect();
 
-    const items = await Media.find()
-      .populate("category")
-      .sort({ createdAt: -1 });
-
+    const items = await Media.find().populate("category").sort({ createdAt: -1 });
     return NextResponse.json({ ok: true, items });
   } catch (err: unknown) {
     if (err instanceof Error && err.message === "UNAUTHORIZED") {
@@ -53,22 +50,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "url requerida" }, { status: 400 });
     }
 
-    const fullVideoUrl =
-      typeof body.fullVideoUrl === "string" ? body.fullVideoUrl.trim() : "";
-
-    if (type === "video" && fullVideoUrl && !/^https?:\/\//i.test(fullVideoUrl)) {
-      return NextResponse.json(
-        { ok: false, error: "fullVideoUrl inválida" },
-        { status: 400 }
-      );
-    }
-
+    const publicId = typeof body.publicId === "string" ? body.publicId.trim() : "";
     const resourceType =
       body.resourceType === "image" || body.resourceType === "video"
         ? body.resourceType
         : undefined;
 
-    const publicId = typeof body.publicId === "string" ? body.publicId.trim() : "";
+    const fullVideoUrl = typeof body.fullVideoUrl === "string" ? body.fullVideoUrl.trim() : "";
+    if (type === "video" && fullVideoUrl && !/^https?:\/\//i.test(fullVideoUrl)) {
+      return NextResponse.json({ ok: false, error: "fullVideoUrl inválida" }, { status: 400 });
+    }
 
     const item = await Media.create({
       title: typeof body.title === "string" ? body.title.trim() : "",
@@ -80,12 +71,11 @@ export async function POST(req: Request) {
 
       publicId: publicId || undefined,
       resourceType,
+
       fullVideoUrl: type === "video" ? (fullVideoUrl || undefined) : undefined,
     });
 
-    // opcional: devolver populate para que el front muestre nombre categoría
     const populated = await Media.findById(item._id).populate("category");
-
     return NextResponse.json({ ok: true, item: populated }, { status: 201 });
   } catch (err: unknown) {
     if (err instanceof Error && err.message === "UNAUTHORIZED") {
