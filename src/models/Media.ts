@@ -2,6 +2,7 @@ import { Schema, model, models, Types } from "mongoose";
 
 const MediaSchema = new Schema(
   {
+    // Para media general (si querés seguir usando title)
     title: { type: String, trim: true },
 
     type: {
@@ -9,26 +10,29 @@ const MediaSchema = new Schema(
       enum: ["photo", "video"],
       required: true,
     },
-
     category: {
       type: Types.ObjectId,
       ref: "Category",
       required: true,
     },
-
-    // Cloudinary secure_url
-    url: { type: String, required: true },
-
+    url: {
+      type: String,
+      required: true,
+    },
     thumbnail: { type: String },
 
     isFeatured: { type: Boolean, default: false },
 
-    // ✅ para borrado completo en Cloudinary
-    publicId: { type: String },
-    resourceType: { type: String, enum: ["image", "video"] },
+    // ✅ NUEVO: para projects (y si querés también para otros)
+    name: { type: String, trim: true },
+    description: { type: String, trim: true },
 
-    // ✅ SOLO para teaser de video: link al video completo (YouTube, etc.)
+    // ya lo venías usando para “video completo / link externo”
     fullVideoUrl: { type: String, trim: true },
+
+    // recomendado si querés borrar Cloudinary confiable
+    publicId: { type: String, trim: true },
+    resourceType: { type: String, enum: ["image", "video"] },
   },
   { timestamps: true }
 );
