@@ -105,7 +105,6 @@ export default function ProjectsSection({
         </h2>
       </header>
 
-
       <div className="grid gap-6">
         {items.map((p, i) => (
           <ProjectCard key={p._id} item={p} flip={i % 2 === 1} />
