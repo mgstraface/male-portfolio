@@ -92,6 +92,7 @@ export default function ProjectsSection({
 }) {
   if (!items || items.length === 0) return null;
 
+  
   return (
     <section id="projects" className="space-y-6">
       <header className="space-y-2">
