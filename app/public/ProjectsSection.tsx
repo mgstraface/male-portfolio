@@ -93,7 +93,7 @@ export default function ProjectsSection({
   if (!items || items.length === 0) return null;
 
 
-  
+
   return (
     <section id="projects" className="space-y-6">
       <header className="space-y-2">
@@ -104,6 +104,7 @@ export default function ProjectsSection({
           {subtitle}
         </h2>
       </header>
+
 
       <div className="grid gap-6">
         {items.map((p, i) => (
