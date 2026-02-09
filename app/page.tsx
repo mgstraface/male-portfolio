@@ -125,7 +125,8 @@ const footerCat = findCat("footer") || findCat("Footer");
   const bannerItems = byCat(bannerCat, "banner");
   const carouselItems = byCat(carouselCat, "carousel");
 const footerItems = byCat(footerCat, "footer");
-const footer = footerItems.find((x) => x.isFeatured) || footerItems[0] || null;
+// opcional: featured primero
+footerItems.sort((a, b) => Number(b.isFeatured) - Number(a.isFeatured));
 
 
   const banner = bannerItems.find((x) => x.isFeatured) || bannerItems[0] || null;
@@ -154,7 +155,7 @@ const footer = footerItems.find((x) => x.isFeatured) || footerItems[0] || null;
 
     {/* ✅ FOOTER full-width */}
    <FooterSection
-  item={footer}
+    items={footerItems.slice(0, 4)}
   phone="+54 11 XXXX-XXXX"
   instagramUrl="https://instagram.com/..."
   tiktokUrl="https://www.tiktok.com/@maaleeee4"

@@ -2,44 +2,44 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
+import { useMemo, useState } from 'react';
+
 type FooterItem = {
+  _id?: string;
   url: string;
   title?: string;
 };
 
+function cn(...arr: Array<string | false | undefined | null>) {
+  return arr.filter(Boolean).join(" ");
+}
+
 export default function FooterSection({
-  item,
+  items,
   phone,
   instagramUrl,
   tiktokUrl,
   youtubeUrl,
 }: {
-  item: FooterItem | null;
+  items: FooterItem[]; // 👈 ahora array
   phone: string;
   instagramUrl: string;
   tiktokUrl: string;
   youtubeUrl: string;
 }) {
+  const stack = (items || []).filter(Boolean).slice(0, 4);
+
   return (
     <footer className="relative mt-24 border-t border-white/10 bg-black">
       <div className="mx-auto max-w-6xl px-6 py-16">
         <div className="grid gap-10 md:grid-cols-12 items-center">
-          {/* IZQUIERDA – POLAROID */}
+          {/* IZQUIERDA – STACK DE POLAROIDS */}
           <div className="md:col-span-5 flex justify-center md:justify-start">
-            {item?.url ? (
-              <div className="relative bg-white rounded-xl p-3 shadow-2xl rotate-[-2deg]">
-                <img
-                  src={item.url}
-                  alt={item.title || "footer"}
-                  className="h-[260px] w-[220px] object-cover rounded-md"
-                />
-                <div className="pt-3 text-center text-xs text-gray-500">
-                  {item.title || "footer"}
-                </div>
-              </div>
+            {stack.length > 0 ? (
+              <PolaroidStack items={stack} />
             ) : (
               <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-10 text-sm text-white/60">
-                No hay imagen cargada en la categoría <b>footer</b>
+                No hay imágenes cargadas en la categoría <b>footer</b>
               </div>
             )}
           </div>
@@ -72,22 +72,21 @@ export default function FooterSection({
 
             {/* Redes */}
             <div className="mt-8 flex items-center gap-5">
-              <SocialLink href={instagramUrl} label="Instagram">
+              <SocialIcon href={instagramUrl} label="Instagram">
                 <InstagramIcon />
-              </SocialLink>
+              </SocialIcon>
 
-              <SocialLink href={tiktokUrl} label="TikTok">
+              <SocialIcon href={tiktokUrl} label="TikTok">
                 <TikTokIcon />
-              </SocialLink>
+              </SocialIcon>
 
-              <SocialLink href={youtubeUrl} label="YouTube">
+              <SocialIcon href={youtubeUrl} label="YouTube">
                 <YouTubeIcon />
-              </SocialLink>
+              </SocialIcon>
             </div>
           </div>
         </div>
 
-        {/* línea final */}
         <div className="mt-16 border-t border-white/10 pt-6 text-xs text-white/40">
           © {new Date().getFullYear()} – Portfolio
         </div>
@@ -96,10 +95,106 @@ export default function FooterSection({
   );
 }
 
-/* ------------------------------------------------------------ */
-/* Helpers */
+/* ------------------ Polaroid Stack ------------------ */
 
-function SocialLink({
+function PolaroidStack({ items }: { items: FooterItem[] }) {
+  const [active, setActive] = useState(0);
+
+  const stack = useMemo(() => (items || []).slice(0, 4), [items]);
+
+  // ✅ presets “encimados” (suaves)
+  const presets = [
+    { r: -7, x: -45, y: 6 },
+    { r: 6, x: 30, y: -16 },
+    { r: -25, x: -45, y: 18 },
+    { r: 9, x: 78, y: 22 },
+  ];
+
+  return (
+    <div className="relative h-[320px] w-[300px] sm:h-[340px] sm:w-[320px] md:h-[360px] md:w-[340px]">
+      {stack.map((it, i) => {
+        const p = presets[i] || presets[0];
+        const isActive = i === active;
+
+        return (
+          <div
+            key={it._id || it.url || i}
+            className={[
+              "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
+              // z-index dinámico: el activo arriba, los demás por orden
+              isActive ? "z-[50]" : `z-[${10 + i}]`,
+            ].join(" ")}
+          >
+            {/* ✅ Este wrapper mantiene el “layout” centrado.
+                Acá aplicamos la pose base (rotate/translate). */}
+            <div
+              className="transition-transform duration-300"
+              style={{
+                transform: `translate(${p.x}px, ${p.y}px) rotate(${p.r}deg)`,
+              }}
+            >
+              <PolaroidCard
+                src={it.url}
+                caption={it.title}
+                active={isActive}
+                onClick={() => setActive(i)}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+function PolaroidCard({
+  src,
+  caption,
+  active,
+  onClick,
+}: {
+  src: string;
+  caption?: string;
+  active?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "group relative bg-white rounded-2xl p-3 shadow-2xl",
+        "w-[210px] sm:w-[220px] md:w-[230px]",
+        "text-left cursor-pointer",
+        "transition-transform duration-200",
+        // hover sutil en desktop
+        "hover:scale-[1.02]",
+        // ✅ cuando está activa: sube “visual” y resalta
+        active ? "scale-[1.06] ring-2 ring-[#C81D25]/50" : "ring-0",
+      ].join(" ")}
+      aria-label="Polaroid"
+    >
+      <div className="overflow-hidden rounded-xl bg-black">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={caption || "polaroid"}
+          className="h-[220px] w-full object-cover"
+          loading="lazy"
+        />
+      </div>
+
+      <div className="pt-3 text-center text-xs text-gray-500">
+        {caption || "Footer"}
+      </div>
+
+      {/* tape opcional (queda lindo, no molesta) */}
+      <div className="pointer-events-none absolute -top-2 left-1/2 h-6 w-20 -translate-x-1/2 rotate-[-2deg] rounded-md bg-black/10 opacity-0 group-hover:opacity-100 transition" />
+    </button>
+  );
+}
+/* ------------------ Social ------------------ */
+
+function SocialIcon({
   href,
   label,
   children,
@@ -124,40 +219,28 @@ function SocialLink({
         hover:bg-white/10
         transition
       "
+      title={label}
     >
       {children}
     </a>
   );
 }
 
-/* ------------------------------------------------------------ */
-/* ICONOS */
+/* ------------------ Icons ------------------ */
 
 function InstagramIcon() {
   return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="white"
-      strokeWidth="1.6"
-    >
-      <rect x="3" y="3" width="18" height="18" rx="5" />
-      <circle cx="12" cy="12" r="4" />
-      <circle cx="17.5" cy="6.5" r="0.8" fill="white" stroke="none" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect x="3" y="3" width="18" height="18" rx="5" stroke="white" strokeWidth="1.6" />
+      <circle cx="12" cy="12" r="4" stroke="white" strokeWidth="1.6" />
+      <circle cx="17.5" cy="6.5" r="0.8" fill="white" />
     </svg>
   );
 }
 
 function TikTokIcon() {
   return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="white"
-    >
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="white" aria-hidden>
       <path d="M16.5 3c.5 1.9 2 3.4 4 3.9v3.2c-1.7 0-3.3-.6-4.6-1.6v6.1a5.7 5.7 0 1 1-5.7-5.7c.3 0 .6 0 .9.1v3.3a2.4 2.4 0 1 0 1.9 2.3V3h3.5z" />
     </svg>
   );
@@ -165,12 +248,7 @@ function TikTokIcon() {
 
 function YouTubeIcon() {
   return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="white"
-    >
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="white" aria-hidden>
       <path d="M23 7.2s-.2-1.6-.8-2.3c-.7-.8-1.5-.8-1.9-.9C17.6 3.7 12 3.7 12 3.7h0s-5.6 0-8.3.3c-.4 0-1.2.1-1.9.9C1.2 5.6 1 7.2 1 7.2S.7 9 .7 10.8v1.7c0 1.8.3 3.6.3 3.6s.2 1.6.8 2.3c.7.8 1.7.8 2.1.9 1.5.2 6.1.3 8.1.3 0 0 5.6 0 8.3-.3.4 0 1.2-.1 1.9-.9.6-.7.8-2.3.8-2.3s.3-1.8.3-3.6v-1.7C23.3 9 23 7.2 23 7.2zM9.7 14.5V8.9l5.4 2.8-5.4 2.8z" />
     </svg>
   );
