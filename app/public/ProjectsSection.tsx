@@ -150,7 +150,7 @@ function MediaThumb({
       )}
     >
       {/* Poster BN */}
-      <img
+            <img
         src={poster}
         alt="thumb"
         className={cn(
@@ -166,7 +166,24 @@ function MediaThumb({
           const o = img.naturalWidth >= img.naturalHeight ? "h" : "v";
           onOrientation?.(o);
         }}
+        onLoadCapture={(e) => {
+          // ✅ fallback extra (algunos casos el onLoad no llega en fast refresh)
+          const img = e.currentTarget as HTMLImageElement;
+          if (img?.naturalWidth && img?.naturalHeight) {
+            const o = img.naturalWidth >= img.naturalHeight ? "h" : "v";
+            onOrientation?.(o);
+          }
+        }}
+        ref={(img) => {
+          // ✅ si ya vino cacheada, no hay onLoad: lo detectamos acá
+          if (!img) return;
+          if (img.complete && img.naturalWidth && img.naturalHeight) {
+            const o = img.naturalWidth >= img.naturalHeight ? "h" : "v";
+            onOrientation?.(o);
+          }
+        }}
       />
+
 
       {/* Hover video (encima del poster) */}
       {isVideo && (
