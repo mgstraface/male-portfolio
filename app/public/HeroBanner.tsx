@@ -9,15 +9,15 @@ type MediaItem = {
 };
 
 export default function HeroBanner({ item }: { item: MediaItem | null }) {
-
-  console.log(item)
   return (
     <section
       className={[
         "relative overflow-hidden",
-        "rounded-3xl", // si lo querés igual al resto del sitio. Si lo querés recto: sacalo.
+        "rounded-3xl", // si lo querés recto: sacalo.
         "bg-black text-white",
         "min-h-[520px] sm:min-h-[600px] lg:min-h-[640px]",
+        // espacio arriba para que PORTFOLIO no se coma la imagen
+        "pt-16 sm:pt-20 lg:pt-24",
       ].join(" ")}
     >
       {/* líneas finas arriba (como la ref) */}
@@ -28,7 +28,7 @@ export default function HeroBanner({ item }: { item: MediaItem | null }) {
       {/* PORTFOLIO gigante atrás */}
       <div className="pointer-events-none absolute inset-x-0 top-10 text-center">
         <div className="select-none text-[64px] sm:text-[92px] lg:text-[120px] font-black tracking-tight text-white/90 leading-none">
-          PORTFOLIO
+          MALENA
         </div>
       </div>
 
@@ -43,52 +43,55 @@ export default function HeroBanner({ item }: { item: MediaItem | null }) {
         ].join(" ")}
       />
 
-      {/* media centrado */}
-      <div className="relative z-10 flex items-end justify-center h-full">
-        <div className="w-full">
-          <div className="mx-auto flex items-end justify-center px-6 pb-10 sm:pb-12 lg:pb-14">
-            {!item ? (
-              <div className="rounded-2xl border border-white/15 bg-white/5 px-6 py-5 text-center text-sm text-white/70">
-                Subí una <b>imagen PNG</b> (sin fondo) a la categoría <b>Banner</b>.
-              </div>
-            ) : item.type === "photo" ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={item.url}
-                alt={item.title || "banner"}
-                className={[
-                  "block",
-                  "max-h-[520px] sm:max-h-[560px] lg:max-h-[620px]",
-                  "w-auto max-w-[92%] sm:max-w-[86%] lg:max-w-[70%]",
-                  "object-contain",
-                  "drop-shadow-[0_28px_55px_rgba(0,0,0,0.65)]",
-                ].join(" ")}
-              />
-            ) : (
-              <video
-                src={item.url}
-                poster={item.thumbnail}
-                autoPlay
-                muted
-                loop
-                playsInline
-                className={[
-                  "block",
-                  "max-h-[520px] sm:max-h-[560px] lg:max-h-[620px]",
-                  "w-auto max-w-[92%] sm:max-w-[86%] lg:max-w-[70%]",
-                  "object-contain",
-                  "drop-shadow-[0_28px_55px_rgba(0,0,0,0.65)]",
-                ].join(" ")}
-              />
-            )}
+      {/* MEDIA: pegada abajo como la referencia */}
+      <div className="absolute inset-x-0 bottom-0 z-10 flex justify-center">
+        {!item ? (
+          <div className="mb-10 rounded-2xl border border-white/15 bg-white/5 px-6 py-5 text-center text-sm text-white/70">
+            Subí una <b>imagen PNG</b> (sin fondo) a la categoría <b>Banner</b>.
           </div>
-        </div>
+        ) : item.type === "photo" ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={item.url}
+            alt={item.title || "banner"}
+            className={[
+              "block",
+              // 👇 clave: bottom pegado + tamaño “tipo poster”
+              "h-[440px] sm:h-[520px] lg:h-[600px]",
+              "w-auto",
+              // un poco más grande y con límite para que no explote en desktop
+              "max-w-[92vw] lg:max-w-[720px]",
+              "object-contain object-bottom",
+              "drop-shadow-[0_28px_55px_rgba(0,0,0,0.65)]",
+              // le damos un toque de aire abajo como en la ref
+              "translate-y-[6px]",
+            ].join(" ")}
+          />
+        ) : (
+          <video
+            src={item.url}
+            poster={item.thumbnail}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className={[
+              "block",
+              "h-[440px] sm:h-[520px] lg:h-[600px]",
+              "w-auto",
+              "max-w-[92vw] lg:max-w-[720px]",
+              "object-contain object-bottom",
+              "drop-shadow-[0_28px_55px_rgba(0,0,0,0.65)]",
+              "translate-y-[6px]",
+            ].join(" ")}
+          />
+        )}
       </div>
 
       {/* texto a la derecha (como ref) */}
       <div className="absolute right-8 top-28 z-20 hidden lg:block max-w-[320px] text-right">
         <div className="text-[44px] leading-none font-semibold italic text-red-600">
-          Malena
+          Male
         </div>
 
         <p className="mt-3 text-sm leading-relaxed text-white/80">
