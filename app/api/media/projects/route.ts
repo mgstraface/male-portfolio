@@ -1,127 +1,124 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* app/api/media/projects/route.ts */
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Media from "@/models/Media";
 import Category from "@/models/Category";
+
+function num(v: string | null, d: number) {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : d;
+}
 
 export async function GET(req: Request) {
   try {
     await dbConnect();
 
     const { searchParams } = new URL(req.url);
-    const page = Math.max(1, Number(searchParams.get("page") || 1));
-    const limit = Math.min(24, Math.max(1, Number(searchParams.get("limit") || 6)));
+    const page = num(searchParams.get("page"), 1);
+    const limit = Math.min(num(searchParams.get("limit"), 6), 24);
     const skip = (page - 1) * limit;
 
-    // ✅ traer TODAS las categories "Projects" (photo + video)
-    const projectsCats = await Category.find({
+    // categorías Projects / Project
+    const cats = await Category.find({
+      name: { $in: ["Projects", "projects", "Project", "project"] },
       active: true,
-      name: { $regex: /^projects?$/i },
     })
-      .select({ _id: 1 })
+      .select("_id")
       .lean();
 
-    const catIds = projectsCats.map((c) => c._id);
+    const catIds = cats.map((c: any) => c._id);
     if (catIds.length === 0) {
-      return NextResponse.json({ ok: true, page, limit, total: 0, totalPages: 0, projects: [] });
+      return NextResponse.json({
+        ok: true,
+        page,
+        limit,
+        total: 0,
+        totalPages: 0,
+        projects: [],
+      });
     }
 
-    const pipeline: any[] = [
-      {
-        $match: {
-          category: { $in: catIds }, // ✅ ahora entra el video también
-          type: { $in: ["photo", "video"] },
-        },
-      },
+    const baseMatch: any = {
+      category: { $in: catIds },
+      album: { $ne: null },
+      $expr: { $gt: [{ $strLenCP: "$album" }, 0] }, // album no vacío
+    };
+
+    // total de grupos (álbumes)
+    const totalAgg = await Media.aggregate([
+      { $match: baseMatch },
+      { $group: { _id: "$album" } },
+      { $count: "total" },
+    ]);
+
+    const total = totalAgg?.[0]?.total || 0;
+    const totalPages = total ? Math.ceil(total / limit) : 0;
+
+    // page de grupos
+    const projects = await Media.aggregate([
+      { $match: baseMatch },
       { $sort: { createdAt: -1 } },
-      {
-        $addFields: {
-          albumKey: { $ifNull: ["$album", { $toString: "$_id" }] },
-        },
-      },
+
+      // agrupamos por album
       {
         $group: {
-          _id: "$albumKey",
+          _id: "$album",
+
+          // meta
           album: { $first: "$album" },
           name: { $first: "$name" },
           description: { $first: "$description" },
-          createdAt: { $first: "$createdAt" },
-          items: {
+
+          count: { $sum: 1 },
+          hasVideo: {
+            $max: {
+              $cond: [{ $eq: ["$type", "video"] }, 1, 0],
+            },
+          },
+          lastCreatedAt: { $max: "$createdAt" },
+
+          // cover = el más reciente
+          cover: {
+            $first: {
+              type: "$type",
+              url: "$url",
+              thumbnail: "$thumbnail",
+              fullVideoUrl: "$fullVideoUrl",
+            },
+          },
+
+          // thumbs (vamos a cortar a 2 después)
+          thumbsAll: {
             $push: {
               _id: "$_id",
               type: "$type",
               url: "$url",
               thumbnail: "$thumbnail",
-              resourceType: "$resourceType",
               fullVideoUrl: "$fullVideoUrl",
-              createdAt: "$createdAt",
             },
           },
-          count: { $sum: 1 },
-          hasVideo: { $max: { $cond: [{ $eq: ["$type", "video"] }, 1, 0] } },
         },
       },
-      { $sort: { createdAt: -1 } },
-      {
-        $facet: {
-          meta: [{ $count: "total" }],
-          data: [{ $skip: skip }, { $limit: limit }],
-        },
-      },
-      {
-        $project: {
-          total: { $ifNull: [{ $arrayElemAt: ["$meta.total", 0] }, 0] },
-          data: 1,
-        },
-      },
-    ];
 
-    const agg = await Media.aggregate(pipeline);
-    const total = agg?.[0]?.total ?? 0;
-    const data = agg?.[0]?.data ?? [];
+      { $addFields: { thumbs: { $slice: ["$thumbsAll", 2] }, hasVideo: { $eq: ["$hasVideo", 1] } } },
+      { $project: { thumbsAll: 0 } },
 
-    const projects = data.map((g: any) => {
-      const first = g.items?.[0];
-
-      const cover =
-        first?.type === "video"
-          ? {
-              type: "video",
-              url: first.url,
-              thumbnail: first.thumbnail || "",
-              fullVideoUrl: first.fullVideoUrl || "",
-            }
-          : { type: "photo", url: first?.url };
-
-      const thumbs = (g.items || []).slice(0, 2).map((x: any) => ({
-        _id: x._id,
-        type: x.type,
-        url: x.url,
-        thumbnail: x.thumbnail || "",
-        fullVideoUrl: x.fullVideoUrl || "",
-      }));
-
-      return {
-        album: g.album || g._id,
-        name: g.name || g.album || "Proyecto",
-        description: g.description || "",
-        count: g.count || 1,
-        hasVideo: !!g.hasVideo,
-        cover,
-        thumbs,
-      };
-    });
+      { $sort: { lastCreatedAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+    ]);
 
     return NextResponse.json({
       ok: true,
       page,
       limit,
       total,
-      totalPages: Math.ceil(total / limit),
+      totalPages,
       projects,
     });
   } catch (e) {
     console.error(e);
-    return NextResponse.json({ ok: false, error: "Error getProjects" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: "Error listando projects" }, { status: 500 });
   }
 }

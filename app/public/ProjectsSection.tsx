@@ -3,34 +3,37 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 type ProjectThumb = {
   _id: string;
-  type: "photo" | "video";
+  type: "photo" | "video"; // legacy (NO confiable)
   url: string;
   thumbnail?: string;
   fullVideoUrl?: string;
-};
 
-type ProjectMediaItem = ProjectThumb & {
-  title?: string;
+  // opcionales (a veces vienen)
   name?: string;
   description?: string;
+  title?: string;
 };
 
 type ProjectApiGroup = {
-  album: string; // viene album || key
+  _id?: string;
+  album: string;
   name: string;
   description: string;
   count: number;
   hasVideo: boolean;
+  lastCreatedAt?: string;
+
   cover: {
-    type: "photo" | "video";
+    type: "photo" | "video"; // legacy (NO confiable)
     url: string;
     thumbnail?: string;
     fullVideoUrl?: string;
   };
+
   thumbs: ProjectThumb[]; // max 2
 };
 
@@ -46,31 +49,75 @@ type ProjectsApiResponse =
   | { ok: false; error: string };
 
 type AlbumItemsResponse =
-  | { ok: true; items: ProjectMediaItem[] }
+  | { ok: true; album: string; items: ProjectThumb[] }
   | { ok: false; error: string };
 
-function isProbablyVideo(item: { type?: string; thumbnail?: string; url: string }) {
-  if (item.type === "video") return true;
-  if (item.thumbnail) return true;
-  return /\.(mp4|webm|mov|m4v)$/i.test(item.url);
+function cn(...arr: Array<string | false | undefined | null>) {
+  return arr.filter(Boolean).join(" ");
 }
 
+/* -----------------------------
+   🔥 Fuentes de verdad:
+   - cloudinary image: /image/upload/
+   - cloudinary video: /video/upload/
+   Nunca confiar en `type`.
+-------------------------------- */
+
+function cloudinaryKindFromUrl(url?: string): "image" | "video" | "unknown" {
+  const u = (url || "").toLowerCase();
+  if (!u) return "unknown";
+  if (u.includes("/video/upload/")) return "video";
+  if (u.includes("/image/upload/")) return "image";
+  return "unknown";
+}
+
+function isImageUrl(url?: string) {
+  const k = cloudinaryKindFromUrl(url);
+  if (k === "image") return true;
+  // fallback por extensión (por si no es cloudinary)
+  return /\.(jpg|jpeg|png|webp|gif|avif)$/i.test(url || "");
+}
+
+function isVideoUrl(url?: string) {
+  const k = cloudinaryKindFromUrl(url);
+  if (k === "video") return true;
+  // fallback por extensión
+  return /\.(mp4|webm|mov|m4v)$/i.test(url || "");
+}
+
+/** pick de poster REAL (imagen) */
+function pickPosterImage(it?: { url?: string; thumbnail?: string }) {
+  if (!it) return undefined;
+
+  // 1) thumbnail si es imagen
+  if (it.thumbnail && isImageUrl(it.thumbnail)) return it.thumbnail;
+
+  // 2) url si es imagen
+  if (it.url && isImageUrl(it.url)) return it.url;
+
+  return undefined;
+}
+
+/** ---------- MediaThumb (BN -> color + hover zoom + hover play si video) ---------- */
 function MediaThumb({
   item,
+  onOrientation,
   className = "",
-  showPlay = false,
-  onMeta,
+  showPlayIcon = false,
+  onClick,
 }: {
-  item: ProjectMediaItem;
+  item: { url: string; thumbnail?: string };
+  onOrientation?: (o: "h" | "v") => void;
   className?: string;
-  showPlay?: boolean;
-  onMeta?: (meta: { horizontal: boolean }) => void;
+  showPlayIcon?: boolean;
+  onClick?: () => void;
 }) {
-  const isVideo = isProbablyVideo(item);
-  const poster = isVideo ? item.thumbnail || item.url : item.url;
+  const isVideo = isVideoUrl(item.url);
 
-  // hover-play: sólo si es video y tenemos un src reproducible
-  const canHoverPlay = isVideo && !!item.url && !/\.(jpg|jpeg|png|webp|gif)$/i.test(item.url);
+  // ✅ poster SIEMPRE imagen si existe
+  const poster = pickPosterImage(item) || item.url;
+
+  const canHoverPlay = isVideo && !!item.url;
 
   const handleEnter = (e: React.MouseEvent<HTMLVideoElement>) => {
     const v = e.currentTarget;
@@ -89,33 +136,35 @@ function MediaThumb({
   };
 
   return (
-    <div
-      className={[
-        "group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5",
-        "transition-transform duration-300 will-change-transform hover:scale-[1.03]",
-        className,
-      ].join(" ")}
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 text-left",
+        "transition-transform duration-300 will-change-transform hover:scale-[1.02]",
+        className
+      )}
     >
-      {/* poster BN base */}
+      {/* Poster BN */}
       <img
         src={poster}
-        alt={item.name || item.title || "media"}
-        className={[
+        alt="thumb"
+        className={cn(
           "absolute inset-0 h-full w-full object-cover",
-          "transition duration-300",
+          "transition duration-300 will-change-transform",
           "filter grayscale contrast-125 brightness-90",
           "group-hover:grayscale-0 group-hover:brightness-100",
-        ].join(" ")}
+          "group-hover:scale-[1.03]"
+        )}
         loading="lazy"
         onLoad={(e) => {
           const img = e.currentTarget;
-          if (onMeta && img.naturalWidth && img.naturalHeight) {
-            onMeta({ horizontal: img.naturalWidth >= img.naturalHeight });
-          }
+          const o = img.naturalWidth >= img.naturalHeight ? "h" : "v";
+          onOrientation?.(o);
         }}
       />
 
-      {/* hover video encima */}
+      {/* Hover video */}
       {canHoverPlay && (
         <video
           src={item.url}
@@ -125,25 +174,25 @@ function MediaThumb({
           preload="metadata"
           onMouseEnter={handleEnter}
           onMouseLeave={handleLeave}
-          className={[
+          className={cn(
             "absolute inset-0 h-full w-full object-cover",
-            "opacity-0 group-hover:opacity-100 transition-opacity duration-200",
-          ].join(" ")}
+            "opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+          )}
         />
       )}
 
-      {/* play overlay */}
-      {showPlay && (
+      {showPlayIcon && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center">
           <div
-            className={[
+            className={cn(
               "h-14 w-14 rounded-full",
               "bg-black/60 backdrop-blur",
               "grid place-items-center",
               "border border-white/20",
-              "transition-transform duration-300",
-              "group-hover:scale-105",
-            ].join(" ")}
+              "transition-all duration-200",
+              "opacity-0 group-hover:opacity-100",
+              "group-hover:scale-105"
+            )}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path d="M9 18V6l10 6-10 6Z" fill="white" opacity="0.95" />
@@ -151,84 +200,202 @@ function MediaThumb({
           </div>
         </div>
       )}
-    </div>
+    </button>
   );
 }
 
-function Modal({
+/** ---------- Modal ---------- */
+function ProjectModal({
   open,
+  onClose,
+  album,
   title,
   description,
-  items,
-  onClose,
+  initialItems,
 }: {
   open: boolean;
-  title: string;
-  description?: string;
-  items: ProjectMediaItem[];
   onClose: () => void;
+  album: string;
+  title: string;
+  description: string;
+  initialItems: ProjectThumb[];
 }) {
+  const [items, setItems] = useState<ProjectThumb[]>(initialItems || []);
+  const [active, setActive] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    let alive = true;
+    setErr(null);
+    setLoading(true);
+    setActive(0);
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/media/projects/${encodeURIComponent(album)}`, { cache: "no-store" });
+        const data = (await res.json()) as AlbumItemsResponse;
+        if (!res.ok || !data.ok) throw new Error(!data.ok ? data.error : "Error cargando álbum");
+        if (!alive) return;
+
+        const seen = new Set<string>();
+        const clean = (data.items || []).filter((x) => {
+          const k = String((x as any)._id || x.url);
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+
+        setItems(clean);
+      } catch (e: any) {
+        if (!alive) return;
+        setErr(e?.message || "Error cargando álbum");
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [open, album]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
+  const current = items[active];
+  const currentIsVideo = !!current && isVideoUrl(current.url);
+  const poster = currentIsVideo ? pickPosterImage(current) : undefined;
+
   return (
-    <div className="fixed inset-0 z-[80]">
-      <div
+    <div className="fixed inset-0 z-[100]">
+      <button
+        aria-label="Cerrar"
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
-        aria-hidden
+        type="button"
       />
-      <div className="absolute inset-x-0 top-10 mx-auto w-[min(1100px,92vw)]">
-        <div className="rounded-3xl border border-white/10 bg-black p-6 md:p-8 shadow-2xl">
-          <div className="flex items-start justify-between gap-4">
+
+      <div className="absolute inset-0 flex items-center justify-center p-4">
+        <div
+          className={cn(
+            "relative w-full max-w-6xl",
+            "rounded-3xl border border-white/10 bg-black",
+            "shadow-2xl",
+            "max-h-[86vh] overflow-hidden"
+          )}
+        >
+          <div className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
             <div>
               <div className="text-xs tracking-widest text-white/40 uppercase">Project</div>
-              <h3 className="mt-1 text-2xl md:text-3xl font-semibold text-white">{title}</h3>
-              {description ? <p className="mt-2 text-white/70">{description}</p> : null}
+              <div className="mt-1 text-2xl font-semibold text-white">{title}</div>
+              {description ? <div className="mt-2 text-sm text-white/70">{description}</div> : null}
             </div>
 
             <button
               onClick={onClose}
-              className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10"
+              className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10"
               type="button"
             >
               Cerrar
             </button>
           </div>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((it) => {
-              const isVid = isProbablyVideo(it);
-              const poster = isVid ? it.thumbnail || it.url : it.url;
+          <div className="px-6 py-5">
+            {err && (
+              <div className="mb-4 rounded-2xl border border-red-200/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                {err}
+              </div>
+            )}
 
-              return (
-                <div
-                  key={it._id}
-                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5"
-                >
-                  <div className="aspect-[4/3] w-full">
-                    <img
-                      src={poster}
-                      alt={it.name || it.title || "media"}
-                      className={[
-                        "h-full w-full object-cover",
-                        "transition duration-300",
-                        "filter grayscale contrast-125 brightness-90",
-                        "group-hover:grayscale-0 group-hover:brightness-100",
-                      ].join(" ")}
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-3">
+              <div className="relative overflow-hidden rounded-2xl bg-black">
+                <div className="h-[42vh] md:h-[50vh]">
+                  {!current ? (
+                    <div className="h-full w-full grid place-items-center text-white/60">Sin archivos</div>
+                  ) : currentIsVideo ? (
+                    <video
+                      src={current.url}
+                      controls
+                      playsInline
+                      className="h-full w-full object-contain bg-black"
+                      poster={poster}
                     />
-                    {isVid && (
-                      <div className="pointer-events-none absolute inset-0 grid place-items-center">
-                        <div className="h-12 w-12 rounded-full bg-black/60 border border-white/20 grid place-items-center">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-                            <path d="M9 18V6l10 6-10 6Z" fill="white" opacity="0.95" />
-                          </svg>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  ) : (
+                    <img src={current.url} alt="preview" className="h-full w-full object-contain bg-black" />
+                  )}
                 </div>
-              );
-            })}
+              </div>
+
+              {currentIsVideo && current?.fullVideoUrl ? (
+                <div className="mt-3 flex justify-end">
+                  <a
+                    href={current.fullVideoUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10"
+                  >
+                    Ver video completo
+                  </a>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="mt-4">
+              <div className="flex items-center justify-between">
+                <div className="text-xs tracking-widest text-white/40 uppercase">
+                  {loading ? "Cargando..." : `${items.length} archivo${items.length === 1 ? "" : "s"}`}
+                </div>
+              </div>
+
+              <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
+                {items.map((it, idx) => {
+                  const itIsVideo = isVideoUrl(it.url);
+                  const tPoster = pickPosterImage(it) || it.url;
+
+                  return (
+                    <button
+                      key={String((it as any)._id || it.url)}
+                      onClick={() => setActive(idx)}
+                      className={cn(
+                        "relative shrink-0 overflow-hidden rounded-2xl border bg-white/5",
+                        "h-24 w-36 md:h-28 md:w-44",
+                        idx === active ? "border-white/40" : "border-white/10 hover:border-white/25"
+                      )}
+                      type="button"
+                      title={itIsVideo ? "Video" : "Foto"}
+                    >
+                      <img
+                        src={tPoster}
+                        alt="thumb"
+                        className={cn(
+                          "absolute inset-0 h-full w-full object-cover",
+                          "filter grayscale contrast-125 brightness-90",
+                          "hover:grayscale-0 hover:brightness-100 transition"
+                        )}
+                        loading="lazy"
+                      />
+                      {itIsVideo && (
+                        <div className="absolute right-2 top-2 rounded-full bg-black/60 border border-white/20 px-2 py-1 text-[10px] text-white">
+                          video
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -236,6 +403,7 @@ function Modal({
   );
 }
 
+/** ---------- Card ---------- */
 function ProjectCard({
   group,
   index,
@@ -247,38 +415,42 @@ function ProjectCard({
 }) {
   const isFirst = index === 0;
   const bg = isFirst ? "bg-[#C81D25]" : "bg-black";
-
   const title = group.name || group.album || "Proyecto";
   const desc = group.description || "";
-
   const count = group.count || 1;
+
+  // ⚠️ IMPORTANTE:
+  // NO usar cover para inferir portada porque en tu payload viene mal.
+  // Armamos todo desde thumbs + urls.
   const thumbs = group.thumbs || [];
-  const showTwo = count >= 2 && thumbs.length >= 2;
+
+  // Fuente de verdad por URL cloudinary:
+  const videoThumb = thumbs.find((t) => isVideoUrl(t.url));
+  const imageThumb = thumbs.find((t) => isImageUrl(t.url)) || thumbs.find((t) => isImageUrl(t.thumbnail || ""));
+
+  // Poster debe ser imagen real:
+  const posterImage = pickPosterImage(imageThumb);
+
+  const hasPhotoAndVideo = !!videoThumb && !!posterImage;
+
+  // ✅ en foto+video: SINGLE visual
+  const forceSingle = hasPhotoAndVideo;
+
+  // Si no es forceSingle, lógica doble normal
+  const showTwo = !forceSingle && count >= 2 && thumbs.length >= 2;
+
+  const [o1, setO1] = useState<"h" | "v">("v");
+  const [o2, setO2] = useState<"h" | "v">("v");
+
+  const stackVertical = showTwo && o1 === "h" && o2 === "h";
   const more = Math.max(0, count - (showTwo ? 2 : 1));
-
-  // detectar orientación para decidir layout (lado a lado vs stacked)
-  const [thumb0Horizontal, setThumb0Horizontal] = useState<boolean | null>(null);
-  const [thumb1Horizontal, setThumb1Horizontal] = useState<boolean | null>(null);
-
-  const stackVertical =
-    showTwo && ((thumb0Horizontal ?? false) || (thumb1Horizontal ?? false)); // si alguna es horizontal => stack
-
-  const coverItem: ProjectMediaItem = { ...group.cover, _id: `${group.album}-cover` };
-
-  // altura fija para media, así no cambia la card por orientación
- // antes tenías distintos altos (single más alto)
-// const MEDIA_H = "h-[260px] md:h-[340px]";
-// const TWO_H = "h-[220px] md:h-[260px]";
-
-const MEDIA_SLOT_H = "h-[220px] md:h-[260px]"; // ✅ mismo alto para todos
-
-  const isSingleVideo = !showTwo && coverItem.type === "video";
+  const MEDIA_H = "h-[320px] md:h-[340px]";
 
   return (
-    <article className={["rounded-[28px] border border-white/10", bg, "p-6 md:p-8"].join(" ")}>
+    <article className={cn("rounded-[28px] border border-white/10", bg, "p-6 md:p-8")}>
       <div className="grid items-start gap-6 md:grid-cols-12">
         {/* TEXTO */}
-        <div className="md:col-span-5 flex flex-col">
+        <div className="md:col-span-5 flex flex-col h-full">
           <div className="text-[11px] tracking-widest text-white/60 uppercase">Project</div>
 
           <h3 className="mt-2 text-2xl md:text-[28px] font-semibold tracking-tight text-white">
@@ -301,58 +473,80 @@ const MEDIA_SLOT_H = "h-[220px] md:h-[260px]"; // ✅ mismo alto para todos
             </span>
           </div>
 
-          {/* ✅ Botón “Ver” abajo de todo (queda más prolijo) */}
-          <div className="mt-6">
-            <button
-              onClick={() => onOpen(group)}
-              className="rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm text-white hover:bg-white/10"
-              type="button"
-            >
-              Ver
-            </button>
-          </div>
+          {/* ✅ botón abajo */}
+          <button
+            type="button"
+            onClick={() => onOpen(group)}
+            className="mt-6 w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm text-white hover:bg-white/10 md:w-auto md:self-start md:mt-auto"
+          >
+            Ver
+          </button>
         </div>
 
         {/* MEDIA */}
         <div className="md:col-span-7">
-          {/* SINGLE grande */}
-      {!showTwo && (
-  <MediaThumb
-    item={{ ...coverItem, name: title, description: desc }}
-    showPlay={isSingleVideo}
-    className={MEDIA_SLOT_H}   // ✅ antes MEDIA_H
-  />
-)}
+          {/* SINGLE */}
+          {!showTwo && (
+            <div className={cn("relative", MEDIA_H)}>
+              <MediaThumb
+                item={
+                  hasPhotoAndVideo && videoThumb
+                    ? {
+                        // ✅ url del video, thumbnail = IMAGEN (poster real)
+                        url: videoThumb.url,
+                        thumbnail: posterImage,
+                      }
+                    : {
+                        // fallback: si es solo 1 cosa en thumbs, mostrala
+                        url: thumbs[0]?.url || group.cover?.url,
+                        thumbnail: thumbs[0]?.thumbnail || group.cover?.thumbnail,
+                      }
+                }
+                className="h-full w-full"
+                showPlayIcon={false}
+                onClick={() => onOpen(group)}
+              />
 
-
-          {/* DOBLE preview */}
-          {showTwo && (
-            <div className={["relative w-full", MEDIA_SLOT_H].join(" ")}>
-              <div
-                className={[
-                  "h-full w-full grid gap-4",
-                  stackVertical ? "grid-cols-1 grid-rows-2" : "grid-cols-2",
-                ].join(" ")}
-              >
-                <MediaThumb
-                  item={{ ...thumbs[0], name: title, description: desc }}
-                  className="h-full"
-                  showPlay={thumbs[0].type === "video" || isProbablyVideo(thumbs[0])}
-                  onMeta={({ horizontal }) => setThumb0Horizontal(horizontal)}
-                />
-                <MediaThumb
-                  item={{ ...thumbs[1], name: title, description: desc }}
-                  className="h-full"
-                  showPlay={thumbs[1].type === "video" || isProbablyVideo(thumbs[1])}
-                  onMeta={({ horizontal }) => setThumb1Horizontal(horizontal)}
-                />
-              </div>
-
+              {/* si querés ocultar +1 en foto+video: !forceSingle && more>0 */}
               {more > 0 && (
                 <div className="pointer-events-none absolute right-3 top-3 rounded-full border border-white/20 bg-black/50 px-3 py-1 text-xs text-white backdrop-blur">
                   +{more}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* DOBLE */}
+          {showTwo && (
+            <div className={cn("relative", MEDIA_H)}>
+              <div
+                className={cn(
+                  "relative h-full",
+                  "grid gap-4",
+                  stackVertical ? "grid-cols-1 grid-rows-2" : "grid-cols-2"
+                )}
+              >
+                <MediaThumb
+                  item={thumbs[0]}
+                  className="h-full w-full"
+                  showPlayIcon={false}
+                  onOrientation={setO1}
+                  onClick={() => onOpen(group)}
+                />
+                <MediaThumb
+                  item={thumbs[1]}
+                  className="h-full w-full"
+                  showPlayIcon={false}
+                  onOrientation={setO2}
+                  onClick={() => onOpen(group)}
+                />
+
+                {more > 0 && (
+                  <div className="pointer-events-none absolute right-3 top-3 rounded-full border border-white/20 bg-black/50 px-3 py-1 text-xs text-white backdrop-blur">
+                    +{more}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -361,6 +555,7 @@ const MEDIA_SLOT_H = "h-[220px] md:h-[260px]"; // ✅ mismo alto para todos
   );
 }
 
+/** ---------- Section (paginado + modal) ---------- */
 export default function ProjectsSection({
   initial,
   title = "Projects",
@@ -379,60 +574,24 @@ export default function ProjectsSection({
   const [totalPages, setTotalPages] = useState<number>(initialOk ? (initial as any).totalPages || 1 : 1);
 
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(!initialOk ? (initial as any)?.error || "Error" : null);
+  const [error, setError] = useState<string | null>(
+    !initialOk ? (initial as any)?.error || "Error cargando projects" : null
+  );
 
   const canLoadMore = useMemo(() => page < totalPages, [page, totalPages]);
 
-  // modal
+  // modal state
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState<ProjectApiGroup | null>(null);
-  const [albumItems, setAlbumItems] = useState<ProjectMediaItem[]>([]);
-  const [albumLoading, setAlbumLoading] = useState(false);
+  const [activeGroup, setActiveGroup] = useState<ProjectApiGroup | null>(null);
 
-  const openModal = async (g: ProjectApiGroup) => {
-    setActive(g);
+  const openModal = (g: ProjectApiGroup) => {
+    setActiveGroup(g);
     setOpen(true);
-
-    // fallback rápido con lo que ya tenemos
-    const fallback: ProjectMediaItem[] = [
-      { ...g.cover, _id: `${g.album}-cover`, name: g.name, description: g.description },
-      ...(g.thumbs || []).map((t) => ({ ...t, name: g.name, description: g.description })),
-    ];
-    setAlbumItems(fallback);
-
-    // si hay más items que los thumbs, intentamos pedir el álbum completo
-    if ((g.count || 0) > (g.thumbs?.length || 0)) {
-      setAlbumLoading(true);
-      try {
-        // 🔁 CAMBIÁ ESTA RUTA si tu endpoint es otro:
-        const res = await fetch(`/api/media/projects/album?album=${encodeURIComponent(g.album)}`, {
-          cache: "no-store",
-        });
-
-        const data = (await res.json()) as AlbumItemsResponse;
-
-        if (res.ok && data.ok && Array.isArray(data.items)) {
-          setAlbumItems(
-            data.items.map((it) => ({
-              ...it,
-              name: it.name || g.name,
-              description: it.description || g.description,
-            }))
-          );
-        }
-      } catch {
-        // si falla, nos quedamos con fallback
-      } finally {
-        setAlbumLoading(false);
-      }
-    }
   };
 
   const closeModal = () => {
     setOpen(false);
-    setActive(null);
-    setAlbumItems([]);
-    setAlbumLoading(false);
+    setActiveGroup(null);
   };
 
   const loadMore = async () => {
@@ -440,11 +599,10 @@ export default function ProjectsSection({
 
     setLoadingMore(true);
     setError(null);
+
     try {
       const nextPage = page + 1;
-      const res = await fetch(`/api/media/projects?page=${nextPage}&limit=${pageSize}`, {
-        cache: "no-store",
-      });
+      const res = await fetch(`/api/media/projects?page=${nextPage}&limit=${pageSize}`, { cache: "no-store" });
       const data = (await res.json()) as ProjectsApiResponse;
 
       if (!res.ok || !data.ok) throw new Error(!data.ok ? data.error : "Error cargando más");
@@ -456,8 +614,8 @@ export default function ProjectsSection({
         return Array.from(map.values());
       });
 
-      setPage((data as any).page);
-      setTotalPages((data as any).totalPages);
+      setPage(data.page);
+      setTotalPages(data.totalPages);
     } catch (e: any) {
       setError(e?.message || "Error cargando más");
     } finally {
@@ -486,7 +644,6 @@ export default function ProjectsSection({
         ))}
       </div>
 
-      {/* ✅ “Cargar más” abajo de todo */}
       {canLoadMore && (
         <div className="pt-2 flex justify-center">
           <button
@@ -500,15 +657,16 @@ export default function ProjectsSection({
         </div>
       )}
 
-      <Modal
-        open={open}
-        title={active?.name || active?.album || "Proyecto"}
-        description={
-          (albumLoading ? `${active?.description || ""} (cargando...)` : active?.description) || ""
-        }
-        items={albumItems}
-        onClose={closeModal}
-      />
+      {activeGroup && (
+        <ProjectModal
+          open={open}
+          onClose={closeModal}
+          album={activeGroup.album}
+          title={activeGroup.name || activeGroup.album}
+          description={activeGroup.description || ""}
+          initialItems={activeGroup.thumbs || []}
+        />
+      )}
     </section>
   );
 }
