@@ -18,11 +18,8 @@ const MediaSchema = new Schema(
       trim: true,
     },
 
-    type: {
-      type: String,
-      enum: ["photo", "video"],
-      required: true,
-    },
+    type: { type: String, enum: ["photo", "video"], required: true, default: "photo" },
+
 
     category: {
       type: Types.ObjectId,

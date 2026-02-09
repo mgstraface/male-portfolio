@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// app/page.tsx
 import HeroBanner from "./public/HeroBanner";
 import MediaCarousel from "./public/MediaCarousel";
 import ContactSection from "./public/ContactSection";
@@ -17,12 +19,12 @@ type MediaItem = {
   // legacy
   title?: string;
 
-  // ✅ projects
+  // projects
   name?: string;
   description?: string;
 
   type: "photo" | "video";
-  category: Category | string;
+  category: Category | string | any; // <- puede venir populado raro (id vs _id)
   url: string;
   thumbnail?: string;
   isFeatured: boolean;
@@ -34,6 +36,12 @@ function catName(c: Category | string): string {
   return typeof c === "string" ? c : c?.name || "";
 }
 
+function catId(c: any): string {
+  if (!c) return "";
+  if (typeof c === "string") return c;
+  return c._id || c.id || "";
+}
+
 // ✅ Next 16: headers() puede ser Promise -> hay que await
 async function getBaseUrl() {
   const h = await headers();
@@ -43,10 +51,7 @@ async function getBaseUrl() {
     h.get("host") ||
     process.env.APP_URL?.replace(/^https?:\/\//, "");
 
-  if (!host) {
-    // fallback dev
-    return "http://localhost:3000";
-  }
+  if (!host) return "http://localhost:3000";
 
   const proto =
     h.get("x-forwarded-proto") ||
@@ -84,29 +89,34 @@ export default async function HomePage() {
   const categories = cData.ok ? cData.categories || [] : [];
   const items = mData.ok ? mData.items || [] : [];
 
-  // helper: encontrar category por name (case-insensitive)
   const findCat = (name: string) =>
-    categories.find((c) => c.active && c.name.toLowerCase().trim() === name.toLowerCase().trim());
+    categories.find(
+      (c) => c.active && c.name.toLowerCase().trim() === name.toLowerCase().trim()
+    );
 
-  const bannerCat = findCat("banner");
+  const bannerCat = findCat("banner") || findCat("Banner");
+  console.log(bannerCat)
   const carouselCat = findCat("carousel");
-  const projectsCat = findCat("Projects") || findCat("projects");
+  const projectsCat = findCat("projects") || findCat("Projects");
 
   const byCat = (cat: Category | undefined, fallbackName: string) => {
-    if (cat) {
-      return items.filter(
-        (m) => typeof m.category !== "string" && m.category?._id === cat._id
-      );
+    // 1) si tengo cat, matcheo por ID (soporta string, _id o id)
+    if (cat?._id) {
+      const target = cat._id;
+      return items.filter((m) => catId(m.category) === target);
     }
-    return items.filter((m) => catName(m.category).toLowerCase().trim() === fallbackName.toLowerCase().trim());
+
+    // 2) fallback por nombre
+    const n = fallbackName.toLowerCase().trim();
+    return items.filter((m) => catName(m.category).toLowerCase().trim() === n);
   };
 
   const bannerItems = byCat(bannerCat, "banner");
   const carouselItems = byCat(carouselCat, "carousel");
-  const projectItems = byCat(projectsCat, projectsCat ? projectsCat.name : "Projects").concat(
-    // fallback extra: por las dudas que se llame "project"
-    byCat(undefined, "projects")
-  );
+
+  // projects: si existe la categoría "Projects" usamos esa;
+  // si no, fallback por nombre "projects"
+  const projectItems = byCat(projectsCat, "projects");
 
   // Hero: destacado o primero (foto o video)
   const banner = bannerItems.find((x) => x.isFeatured) || bannerItems[0] || null;
@@ -114,9 +124,7 @@ export default async function HomePage() {
   // Carrusel: solo fotos
   const carousel = carouselItems.filter((x) => x.type === "photo");
 
-  // Projects: idealmente mostrar “cards” con name/description + cover
-  // - cover: url (foto) o thumbnail (video) o url mismo si no hay thumbnail
-  // - link: fullVideoUrl (lo reutilizamos como “link externo” si querés)
+  // Projects: fotos o videos, ordenados por fecha desc
   const projects = projectItems
     .filter((x) => x.type === "photo" || x.type === "video")
     .sort((a, b) => {
@@ -126,24 +134,26 @@ export default async function HomePage() {
     });
 
   return (
-    <main className="min-h-screen bg-white">
-      <div className="mx-auto max-w-6xl px-4 py-8 space-y-10">
-        <HeroBanner item={banner} />
+<main className="min-h-screen bg-black">
+  {/* HERO FULL WIDTH */}
+  <HeroBanner item={banner} />
 
-        <MediaCarousel
-          title="Galería"
-          subtitle="Una selección de fotos destacadas"
-          items={carousel}
-        />
+  {/* CONTENIDO ACOTADO */}
+  <div className="mx-auto max-w-6xl px-4 py-10 space-y-10">
+    <MediaCarousel
+      title="Galería"
+      subtitle="Una selección de fotos destacadas"
+      items={carousel}
+    />
 
-        <ProjectsSection
-          title="Projects"
-          subtitle="Selección de proyectos y sesiones"
-          items={projects}
-        />
+    <ProjectsSection
+      title="Projects"
+      subtitle="Selección de proyectos y sesiones"
+      items={projects}
+    />
 
-        <ContactSection />
-      </div>
-    </main>
+    <ContactSection />
+  </div>
+</main>
   );
 }
