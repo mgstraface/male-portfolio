@@ -4,6 +4,7 @@ import HeroBanner from "./public/HeroBanner";
 import MediaCarousel from "./public/MediaCarousel";
 import ContactSection from "./public/ContactSection";
 import ProjectsSection from "./public/ProjectsSection";
+import FooterSection from './public/FooterSection';
 import { headers } from "next/headers";
 
 type Category = {
@@ -110,6 +111,7 @@ export default async function HomePage() {
 
   const bannerCat = findCat("banner") || findCat("Banner");
   const carouselCat = findCat("carousel");
+const footerCat = findCat("footer") || findCat("Footer");
 
   const byCat = (cat: Category | undefined, fallbackName: string) => {
     if (cat?._id) {
@@ -122,31 +124,43 @@ export default async function HomePage() {
 
   const bannerItems = byCat(bannerCat, "banner");
   const carouselItems = byCat(carouselCat, "carousel");
+const footerItems = byCat(footerCat, "footer");
+const footer = footerItems.find((x) => x.isFeatured) || footerItems[0] || null;
+
 
   const banner = bannerItems.find((x) => x.isFeatured) || bannerItems[0] || null;
   const carousel = carouselItems.filter((x) => x.type === "photo");
 
   return (
-    <main className="min-h-screen bg-black">
-      <HeroBanner item={banner} />
+  <main className="min-h-screen bg-black">
+    <HeroBanner item={banner} />
 
-      <div className="mx-auto max-w-6xl px-4 py-10 space-y-10">
-        <MediaCarousel
-          title="Galería"
-          subtitle="Una selección de fotos destacadas"
-          items={carousel}
-        />
+    <div className="mx-auto max-w-6xl px-4 py-10 space-y-10">
+      <MediaCarousel
+        title="Galería"
+        subtitle="Una selección de fotos destacadas"
+        items={carousel}
+      />
 
-       <ProjectsSection
-  title="Projects"
-  subtitle="Selección de proyectos y sesiones"
-  initial={pData as any}
-  pageSize={6}
+      <ProjectsSection
+        title="Projects"
+        subtitle="Selección de proyectos y sesiones"
+        initial={pData as any}
+        pageSize={6}
+      />
+
+      <ContactSection />
+    </div>
+
+    {/* ✅ FOOTER full-width */}
+   <FooterSection
+  item={footer}
+  phone="+54 11 XXXX-XXXX"
+  instagramUrl="https://instagram.com/..."
+  tiktokUrl="https://tiktok.com/@..."
+  youtubeUrl="https://youtube.com/@..."
 />
 
-
-        <ContactSection />
-      </div>
-    </main>
+  </main>
   );
 }
