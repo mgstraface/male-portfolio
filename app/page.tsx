@@ -157,7 +157,7 @@ const footer = footerItems.find((x) => x.isFeatured) || footerItems[0] || null;
   item={footer}
   phone="+54 11 XXXX-XXXX"
   instagramUrl="https://instagram.com/..."
-  tiktokUrl="https://tiktok.com/@..."
+  tiktokUrl="https://www.tiktok.com/@maaleeee4"
   youtubeUrl="https://youtube.com/@..."
 />
 
