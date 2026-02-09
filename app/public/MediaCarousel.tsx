@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 type MediaItem = {
   _id: string;
@@ -23,7 +23,6 @@ export default function MediaCarousel({
   const [paused, setPaused] = useState(false);
   const count = items.length;
 
-  // Mantener index válido si cambia el listado
   useEffect(() => {
     if (count === 0) setIndex(0);
     else if (index > count - 1) setIndex(0);
@@ -42,7 +41,6 @@ export default function MediaCarousel({
     setIndex((i) => (i - 1 + count) % count);
   };
 
-  // ✅ Autoplay real (cambia index)
   useEffect(() => {
     if (!canAutoplay || paused) return;
     const id = window.setInterval(() => {
@@ -52,97 +50,118 @@ export default function MediaCarousel({
     return () => window.clearInterval(id);
   }, [paused, canAutoplay, count]);
 
-return (
-  <section
-    id="galeria"
-    className="rounded-3xl border bg-white p-5"
-    onMouseEnter={() => setPaused(true)}
-    onMouseLeave={() => setPaused(false)}
-  >
-    <div className="flex items-start justify-between gap-4">
-      <div>
-        <h2 className="text-xl font-semibold">{title}</h2>
-        {subtitle ? (
-          <p className="mt-1 text-sm text-gray-600">{subtitle}</p>
-        ) : null}
-      </div>
-
-      <div className="flex items-center gap-2">
-        <button
-          onClick={prev}
-          disabled={count <= 1}
-          className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
-        >
-          ←
-        </button>
-        <button
-          onClick={next}
-          disabled={count <= 1}
-          className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
-        >
-          →
-        </button>
-      </div>
-    </div>
-
-    {count === 0 ? (
-      <p className="mt-4 text-sm text-gray-600">
-        No hay fotos para mostrar todavía.
-      </p>
-    ) : (
-      <>
-        {/* 🔥 VIEWPORT SIN BORDE NI PADDING */}
-        <div className="mt-4 overflow-hidden rounded-2xl">
-          <div
-            className="flex transition-transform duration-700 ease-in-out"
-            style={{ transform: `translateX(-${index * 100}%)` }}
-          >
-            {items.map((m) => (
-              <div key={m._id} className="w-full shrink-0">
-                {/* ALTURA CONTROLADA */}
-                <div className="relative h-[420px] md:h-[520px]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={m.url}
-                    alt={m.title || "foto"}
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-
-                  {/* OPCIONAL: overlay con título */}
-                  {m.title && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/40 px-4 py-3 text-white text-sm">
-                      {m.title}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+  return (
+    <section
+      id="galeria"
+      className="
+        rounded-3xl border border-white/10 bg-white/5
+        p-5 shadow-2xl
+      "
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="text-xs tracking-widest text-white/40 uppercase">Galería</div>
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-white">{title}</h2>
+          {subtitle ? <p className="mt-1 text-sm text-white/60">{subtitle}</p> : null}
         </div>
 
-        {/* DOTS + AUTOPLAY */}
-        {count > 1 && (
-          <div className="mt-3 flex items-center justify-between">
-            <div className="flex gap-2">
-              {items.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setIndex(i)}
-                  className={`h-2 w-2 rounded-full ${
-                    i === index ? "bg-gray-900" : "bg-gray-300"
-                  }`}
-                />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={prev}
+            disabled={count <= 1}
+            className="
+              rounded-xl border border-white/15 bg-black/40
+              px-3 py-2 text-sm text-white
+              hover:bg-white/10
+              disabled:opacity-40 disabled:cursor-not-allowed
+            "
+            type="button"
+            aria-label="Anterior"
+            title="Anterior"
+          >
+            ←
+          </button>
+          <button
+            onClick={next}
+            disabled={count <= 1}
+            className="
+              rounded-xl border border-white/15 bg-black/40
+              px-3 py-2 text-sm text-white
+              hover:bg-white/10
+              disabled:opacity-40 disabled:cursor-not-allowed
+            "
+            type="button"
+            aria-label="Siguiente"
+            title="Siguiente"
+          >
+            →
+          </button>
+        </div>
+      </div>
+
+      {count === 0 ? (
+        <p className="mt-4 text-sm text-white/60">No hay fotos para mostrar todavía.</p>
+      ) : (
+        <>
+          {/* VIEWPORT */}
+          <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black">
+            <div
+              className="flex transition-transform duration-700 ease-in-out"
+              style={{ transform: `translateX(-${index * 100}%)` }}
+            >
+              {items.map((m) => (
+                <div key={m._id} className="w-full shrink-0">
+                  <div className="relative h-[360px] sm:h-[420px] md:h-[520px]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={m.url}
+                      alt={m.title || "foto"}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      loading="lazy"
+                    />
+
+                    {/* gradiente inferior */}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/70 to-transparent" />
+
+                    {/* título */}
+                    {m.title ? (
+                      <div className="absolute bottom-0 left-0 right-0 px-4 py-4">
+                        <div className="text-sm text-white/90">{m.title}</div>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
               ))}
             </div>
-
-            <div className="text-xs text-gray-500">
-              Autoplay {paused ? "(pausado)" : "(activo)"}
-            </div>
           </div>
-        )}
-      </>
-    )}
-  </section>
-);
 
+          {/* DOTS + AUTOPLAY */}
+          {count > 1 && (
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                {items.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setIndex(i)}
+                    type="button"
+                    aria-label={`Ir a ${i + 1}`}
+                    className={`
+                      h-2.5 w-2.5 rounded-full transition
+                      ${i === index ? "bg-white" : "bg-white/25 hover:bg-white/40"}
+                    `}
+                  />
+                ))}
+              </div>
+
+              <div className="text-xs text-white/50">
+                Autoplay {paused ? "(pausado)" : "(activo)"}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
 }

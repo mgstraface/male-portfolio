@@ -40,7 +40,7 @@ export default function ContactForm() {
         return;
       }
 
-      setDone("Mensaje enviado ✅");
+      setDone("Mensaje enviado correctamente.");
       setName("");
       setEmail("");
       setMessage("");
@@ -52,23 +52,34 @@ export default function ContactForm() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 text-white">
       {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
           {error}
         </div>
       )}
+
       {done && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-300">
           {done}
         </div>
       )}
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <label className="text-sm font-medium">Nombre</label>
+          <label className="text-sm text-white/80">Nombre</label>
           <input
-            className="mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
+            className="
+              mt-1 w-full rounded-xl
+              border border-white/15
+              bg-black/60
+              px-3 py-2
+              text-white
+              placeholder:text-white/30
+              outline-none
+              focus:border-white/30
+              focus:ring-0
+            "
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Tu nombre"
@@ -76,9 +87,19 @@ export default function ContactForm() {
         </div>
 
         <div>
-          <label className="text-sm font-medium">Email</label>
+          <label className="text-sm text-white/80">Email</label>
           <input
-            className="mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
+            className="
+              mt-1 w-full rounded-xl
+              border border-white/15
+              bg-black/60
+              px-3 py-2
+              text-white
+              placeholder:text-white/30
+              outline-none
+              focus:border-white/30
+              focus:ring-0
+            "
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="tu@email.com"
@@ -87,24 +108,45 @@ export default function ContactForm() {
       </div>
 
       <div>
-        <label className="text-sm font-medium">Mensaje</label>
+        <label className="text-sm text-white/80">Mensaje</label>
         <textarea
-          className="mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
+          className="
+            mt-1 w-full rounded-xl
+            border border-white/15
+            bg-black/60
+            px-3 py-2
+            text-white
+            placeholder:text-white/30
+            outline-none
+            focus:border-white/30
+            focus:ring-0
+            resize-none
+          "
           rows={5}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Escribí tu mensaje..."
+          placeholder="Escribí tu mensaje…"
         />
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-end pt-2">
         <button
           onClick={() => void submit()}
           disabled={loading}
-          className="rounded-xl bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-800 disabled:opacity-50"
+          className="
+            rounded-xl
+            bg-[#C81D25]
+            px-5 py-2.5
+            text-sm font-medium
+            text-white
+            transition
+            hover:bg-[#b01920]
+            disabled:opacity-50
+            disabled:cursor-not-allowed
+          "
           type="button"
         >
-          {loading ? "Enviando..." : "Enviar"}
+          {loading ? "Enviando…" : "Enviar"}
         </button>
       </div>
     </div>
