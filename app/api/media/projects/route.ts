@@ -10,43 +10,39 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const page = Math.max(1, Number(searchParams.get("page") || 1));
-    const limit = Math.min(24, Math.max(1, Number(searchParams.get("limit") || 6))); // albums por página
-
-    // 1) category Projects
-    const projectsCat = await Category.findOne({
-      active: true,
-      name: { $regex: /^projects?$/i },
-    }).lean();
-
-    if (!projectsCat?._id) {
-      return NextResponse.json({ ok: true, page, limit, total: 0, projects: [] });
-    }
-
+    const limit = Math.min(24, Math.max(1, Number(searchParams.get("limit") || 6)));
     const skip = (page - 1) * limit;
 
-    // 2) aggregation: agrupar por album (o por _id si album es null)
+    // ✅ traer TODAS las categories "Projects" (photo + video)
+    const projectsCats = await Category.find({
+      active: true,
+      name: { $regex: /^projects?$/i },
+    })
+      .select({ _id: 1 })
+      .lean();
+
+    const catIds = projectsCats.map((c) => c._id);
+    if (catIds.length === 0) {
+      return NextResponse.json({ ok: true, page, limit, total: 0, totalPages: 0, projects: [] });
+    }
+
     const pipeline: any[] = [
       {
         $match: {
-          category: projectsCat._id,
-          type: { $in: ["photo", "video"] }, // ✅ incluye videos
+          category: { $in: catIds }, // ✅ ahora entra el video también
+          type: { $in: ["photo", "video"] },
         },
       },
       { $sort: { createdAt: -1 } },
-
-      // albumKey: si no hay album => usar _id (álbum único por item suelto)
       {
         $addFields: {
-          albumKey: {
-            $ifNull: ["$album", { $toString: "$_id" }],
-          },
+          albumKey: { $ifNull: ["$album", { $toString: "$_id" }] },
         },
       },
-
       {
         $group: {
           _id: "$albumKey",
-          album: { $first: "$album" }, // puede ser null si era suelto
+          album: { $first: "$album" },
           name: { $first: "$name" },
           description: { $first: "$description" },
           createdAt: { $first: "$createdAt" },
@@ -62,23 +58,16 @@ export async function GET(req: Request) {
             },
           },
           count: { $sum: 1 },
-          hasVideo: {
-            $max: { $cond: [{ $eq: ["$type", "video"] }, 1, 0] },
-          },
+          hasVideo: { $max: { $cond: [{ $eq: ["$type", "video"] }, 1, 0] } },
         },
       },
-
-      // orden de álbumes
       { $sort: { createdAt: -1 } },
-
-      // pagination por álbum
       {
         $facet: {
           meta: [{ $count: "total" }],
           data: [{ $skip: skip }, { $limit: limit }],
         },
       },
-
       {
         $project: {
           total: { $ifNull: [{ $arrayElemAt: ["$meta.total", 0] }, 0] },
@@ -91,7 +80,6 @@ export async function GET(req: Request) {
     const total = agg?.[0]?.total ?? 0;
     const data = agg?.[0]?.data ?? [];
 
-    // shape final: cover + thumbs(2)
     const projects = data.map((g: any) => {
       const first = g.items?.[0];
 
@@ -103,27 +91,21 @@ export async function GET(req: Request) {
               thumbnail: first.thumbnail || "",
               fullVideoUrl: first.fullVideoUrl || "",
             }
-          : {
-              type: "photo",
-              url: first?.url,
-            };
+          : { type: "photo", url: first?.url };
 
-      const thumbs = (g.items || [])
-        .filter((x: any) => x.type === "photo" || x.type === "video")
-        .slice(0, 2)
-        .map((x: any) => ({
-          _id: x._id,
-          type: x.type,
-          url: x.url,
-          thumbnail: x.thumbnail || "",
-          fullVideoUrl: x.fullVideoUrl || "",
-        }));
+      const thumbs = (g.items || []).slice(0, 2).map((x: any) => ({
+        _id: x._id,
+        type: x.type,
+        url: x.url,
+        thumbnail: x.thumbnail || "",
+        fullVideoUrl: x.fullVideoUrl || "",
+      }));
 
       return {
-        album: g.album || g._id, // si era suelto, queda un id único
+        album: g.album || g._id,
         name: g.name || g.album || "Proyecto",
         description: g.description || "",
-        count: g.count || thumbs.length || 1,
+        count: g.count || 1,
         hasVideo: !!g.hasVideo,
         cover,
         thumbs,

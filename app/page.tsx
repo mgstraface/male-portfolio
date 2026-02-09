@@ -16,16 +16,14 @@ type Category = {
 type MediaItem = {
   _id: string;
 
-  // legacy
   title?: string;
 
-  // projects
   album?: string | null;
   name?: string;
   description?: string;
 
   type: "photo" | "video";
-  category: Category | string | any; // <- puede venir populado raro (id vs _id)
+  category: Category | string | any;
   url: string;
   thumbnail?: string;
   isFeatured: boolean;
@@ -33,15 +31,27 @@ type MediaItem = {
   createdAt?: string;
 };
 
-type ProjectGroup = {
-  key: string;
-  album: string | null;
+// ✅ shape nuevo del endpoint /api/media/projects
+type ProjectsApiGroup = {
+  album: string;
+  name: string;
+  description: string;
   count: number;
-  lastCreatedAt?: string;
-  types?: Array<"photo" | "video">;
-  cover?: MediaItem;
-  items: MediaItem[];
+  hasVideo: boolean;
+  cover: { type: "photo" | "video"; url: string; thumbnail?: string; fullVideoUrl?: string };
+  thumbs: Array<{ _id: string; type: "photo" | "video"; url: string; thumbnail?: string; fullVideoUrl?: string }>;
 };
+
+type ProjectsApiResponse =
+  | {
+      ok: true;
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      projects: ProjectsApiGroup[];
+    }
+  | { ok: false; error: string };
 
 function catName(c: Category | string): string {
   return typeof c === "string" ? c : c?.name || "";
@@ -53,7 +63,6 @@ function catId(c: any): string {
   return c._id || c.id || "";
 }
 
-// ✅ Next 16: headers() puede ser Promise -> hay que await
 async function getBaseUrl() {
   const h = await headers();
 
@@ -85,48 +94,28 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 export default async function HomePage() {
-  // categories + media (banner/carousel)
   const [cData, mData, pData] = await Promise.all([
-    getJson<{
-      ok: boolean;
-      categories?: Category[];
-      error?: string;
-    }>("/api/categories"),
+    getJson<{ ok: boolean; categories?: Category[]; error?: string }>("/api/categories"),
+    getJson<{ ok: boolean; items?: MediaItem[]; error?: string }>("/api/media"),
 
-    getJson<{
-      ok: boolean;
-      items?: MediaItem[];
-      error?: string;
-    }>("/api/media"),
-
-    // ✅ NUEVO: projects agrupados por album
-    getJson<{
-      ok: boolean;
-      projects?: ProjectGroup[];
-      error?: string;
-    }>("/api/media/projects"),
+    // ✅ pedimos la primera página (el resto lo hace el client con "Cargar más")
+    getJson<ProjectsApiResponse>("/api/media/projects?page=1&limit=6"),
   ]);
 
   const categories = cData.ok ? cData.categories || [] : [];
   const items = mData.ok ? mData.items || [] : [];
-  const projectsGrouped = pData.ok ? pData.projects || [] : [];
 
   const findCat = (name: string) =>
-    categories.find(
-      (c) => c.active && c.name.toLowerCase().trim() === name.toLowerCase().trim()
-    );
+    categories.find((c) => c.active && c.name.toLowerCase().trim() === name.toLowerCase().trim());
 
   const bannerCat = findCat("banner") || findCat("Banner");
   const carouselCat = findCat("carousel");
 
   const byCat = (cat: Category | undefined, fallbackName: string) => {
-    // 1) si tengo cat, matcheo por ID (soporta string, _id o id)
     if (cat?._id) {
       const target = cat._id;
       return items.filter((m) => catId(m.category) === target);
     }
-
-    // 2) fallback por nombre
     const n = fallbackName.toLowerCase().trim();
     return items.filter((m) => catName(m.category).toLowerCase().trim() === n);
   };
@@ -134,21 +123,13 @@ export default async function HomePage() {
   const bannerItems = byCat(bannerCat, "banner");
   const carouselItems = byCat(carouselCat, "carousel");
 
-  // Hero: destacado o primero
   const banner = bannerItems.find((x) => x.isFeatured) || bannerItems[0] || null;
-
-  // Carrusel: solo fotos
   const carousel = carouselItems.filter((x) => x.type === "photo");
 
-  // Projects: vienen agrupados. (ya vienen ordenados por lastCreatedAt desc si usaste el pipeline)
-  const projects = projectsGrouped;
-console.log("proyectos",projects)
   return (
     <main className="min-h-screen bg-black">
-      {/* HERO FULL WIDTH */}
       <HeroBanner item={banner} />
 
-      {/* CONTENIDO ACOTADO */}
       <div className="mx-auto max-w-6xl px-4 py-10 space-y-10">
         <MediaCarousel
           title="Galería"
@@ -156,11 +137,13 @@ console.log("proyectos",projects)
           items={carousel}
         />
 
-        <ProjectsSection
-          title="Projects"
-          subtitle="Selección de proyectos y sesiones"
-          items={projects as any}
-        />
+       <ProjectsSection
+  title="Projects"
+  subtitle="Selección de proyectos y sesiones"
+  initial={pData as any}
+  pageSize={6}
+/>
+
 
         <ContactSection />
       </div>
