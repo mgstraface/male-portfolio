@@ -98,7 +98,7 @@ function pickPosterImage(it?: { url?: string; thumbnail?: string }) {
   return undefined;
 }
 
-/** ---------- MediaThumb (BN -> color + hover zoom + hover play si video) ---------- */
+
 function MediaThumb({
   item,
   onOrientation,
@@ -113,22 +113,23 @@ function MediaThumb({
   onClick?: () => void;
 }) {
   const isVideo = isVideoUrl(item.url);
-
-  // ✅ poster SIEMPRE imagen si existe
   const poster = pickPosterImage(item) || item.url;
 
-  const canHoverPlay = isVideo && !!item.url;
+  const videoRef = React.useRef<HTMLVideoElement | null>(null);
 
-  const handleEnter = (e: React.MouseEvent<HTMLVideoElement>) => {
-    const v = e.currentTarget;
+  const play = () => {
+    const v = videoRef.current;
+    if (!v) return;
     try {
       v.currentTime = 0;
+      // play puede fallar si el navegador decide bloquear, pero al estar muted suele andar.
       void v.play();
     } catch {}
   };
 
-  const handleLeave = (e: React.MouseEvent<HTMLVideoElement>) => {
-    const v = e.currentTarget;
+  const stop = () => {
+    const v = videoRef.current;
+    if (!v) return;
     try {
       v.pause();
       v.currentTime = 0;
@@ -139,6 +140,9 @@ function MediaThumb({
     <button
       type="button"
       onClick={onClick}
+      // ✅ hover real en desktop (y también sirve con stylus)
+      onPointerEnter={() => isVideo && play()}
+      onPointerLeave={() => isVideo && stop()}
       className={cn(
         "group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 text-left",
         "transition-transform duration-300 will-change-transform hover:scale-[1.02]",
@@ -164,16 +168,16 @@ function MediaThumb({
         }}
       />
 
-      {/* Hover video */}
-      {canHoverPlay && (
+      {/* Hover video (encima del poster) */}
+      {isVideo && (
         <video
+          ref={videoRef}
           src={item.url}
           muted
           playsInline
           loop
-          preload="metadata"
-          onMouseEnter={handleEnter}
-          onMouseLeave={handleLeave}
+          preload="auto"
+          // ✅ no dependemos de eventos del video
           className={cn(
             "absolute inset-0 h-full w-full object-cover",
             "opacity-0 group-hover:opacity-100 transition-opacity duration-200"
@@ -404,6 +408,7 @@ function ProjectModal({
 }
 
 /** ---------- Card ---------- */
+/** ---------- Card ---------- */
 function ProjectCard({
   group,
   index,
@@ -419,26 +424,23 @@ function ProjectCard({
   const desc = group.description || "";
   const count = group.count || 1;
 
-  // ⚠️ IMPORTANTE:
-  // NO usar cover para inferir portada porque en tu payload viene mal.
-  // Armamos todo desde thumbs + urls.
+  // ⚠️ NO usar cover para inferir portada (payload sucio). Usamos thumbs + URL cloudinary.
   const thumbs = group.thumbs || [];
 
   // Fuente de verdad por URL cloudinary:
   const videoThumb = thumbs.find((t) => isVideoUrl(t.url));
-  const imageThumb = thumbs.find((t) => isImageUrl(t.url)) || thumbs.find((t) => isImageUrl(t.thumbnail || ""));
+  const imageThumb = thumbs.find((t) => isImageUrl(t.url));
 
-  // Poster debe ser imagen real:
-  const posterImage = pickPosterImage(imageThumb);
+  // ✅ FIX: forceSingle depende SOLO de que existan 1 video y 1 imagen (no de posterImage)
+  const forceSingle = !!videoThumb && !!imageThumb;
 
-  const hasPhotoAndVideo = !!videoThumb && !!posterImage;
-
-  // ✅ en foto+video: SINGLE visual
-  const forceSingle = hasPhotoAndVideo;
+  // ✅ poster real SIEMPRE la url de la imagen (más confiable que thumbnail)
+  const posterImage = imageThumb?.url;
 
   // Si no es forceSingle, lógica doble normal
   const showTwo = !forceSingle && count >= 2 && thumbs.length >= 2;
 
+  // orientación detectada (solo para doble)
   const [o1, setO1] = useState<"h" | "v">("v");
   const [o2, setO2] = useState<"h" | "v">("v");
 
@@ -453,9 +455,7 @@ function ProjectCard({
         <div className="md:col-span-5 flex flex-col h-full">
           <div className="text-[11px] tracking-widest text-white/60 uppercase">Project</div>
 
-          <h3 className="mt-2 text-2xl md:text-[28px] font-semibold tracking-tight text-white">
-            {title}
-          </h3>
+          <h3 className="mt-2 text-2xl md:text-[28px] font-semibold tracking-tight text-white">{title}</h3>
 
           {desc ? (
             <p className="mt-3 text-white/75 leading-relaxed">{desc}</p>
@@ -490,14 +490,14 @@ function ProjectCard({
             <div className={cn("relative", MEDIA_H)}>
               <MediaThumb
                 item={
-                  hasPhotoAndVideo && videoThumb
+                  forceSingle && videoThumb
                     ? {
-                        // ✅ url del video, thumbnail = IMAGEN (poster real)
+                        // ✅ url del video + poster imagen REAL
                         url: videoThumb.url,
-                        thumbnail: posterImage,
+                        thumbnail: posterImage, // <- imagen
                       }
                     : {
-                        // fallback: si es solo 1 cosa en thumbs, mostrala
+                        // fallback: lo primero que haya
                         url: thumbs[0]?.url || group.cover?.url,
                         thumbnail: thumbs[0]?.thumbnail || group.cover?.thumbnail,
                       }
@@ -507,9 +507,16 @@ function ProjectCard({
                 onClick={() => onOpen(group)}
               />
 
-              {/* si querés ocultar +1 en foto+video: !forceSingle && more>0 */}
-              {more > 0 && (
-                <div className="pointer-events-none absolute right-3 top-3 rounded-full border border-white/20 bg-black/50 px-3 py-1 text-xs text-white backdrop-blur">
+              {/* ✅ badge video SOLO mobile (y con z-10 por si algo lo tapa) */}
+              {forceSingle && (
+                <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-white/20 bg-black/50 px-3 py-1 text-xs text-white backdrop-blur md:hidden">
+                  video
+                </div>
+              )}
+
+              {/* ✅ +N SOLO si NO es foto+video */}
+              {!forceSingle && more > 0 && (
+                <div className="pointer-events-none absolute right-3 top-3 z-10 rounded-full border border-white/20 bg-black/50 px-3 py-1 text-xs text-white backdrop-blur">
                   +{more}
                 </div>
               )}
@@ -542,7 +549,7 @@ function ProjectCard({
                 />
 
                 {more > 0 && (
-                  <div className="pointer-events-none absolute right-3 top-3 rounded-full border border-white/20 bg-black/50 px-3 py-1 text-xs text-white backdrop-blur">
+                  <div className="pointer-events-none absolute right-3 top-3 z-10 rounded-full border border-white/20 bg-black/50 px-3 py-1 text-xs text-white backdrop-blur">
                     +{more}
                   </div>
                 )}
@@ -554,6 +561,7 @@ function ProjectCard({
     </article>
   );
 }
+
 
 /** ---------- Section (paginado + modal) ---------- */
 export default function ProjectsSection({
