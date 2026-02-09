@@ -32,6 +32,7 @@ type MediaItem = {
   title?: string;
 
   // ✅ projects
+  album?: string | null;
   name?: string;
   description?: string;
 
@@ -77,6 +78,7 @@ export default function AdminMediaPage() {
   const [title, setTitle] = useState("");
 
   // ✅ projects fields
+  const [album, setAlbum] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
@@ -91,6 +93,7 @@ export default function AdminMediaPage() {
   const [editTitle, setEditTitle] = useState("");
 
   // ✅ projects inline edit
+  const [editAlbum, setEditAlbum] = useState("");
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
 
@@ -169,18 +172,12 @@ export default function AdminMediaPage() {
 
     // reset de campos
     setTitle("");
+    setAlbum("");
     setName("");
     setDescription("");
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
-
-  // cuando cambia la categoría, limpiamos uploads (como ya hacías)
-  useEffect(() => {
-    // y dejamos preparados los inputs (no los borramos por completo para no joder UX)
-    // pero si querés, los podés resetear acá también.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryId]);
 
   const openWidget = () => {
     setError(null);
@@ -246,8 +243,9 @@ export default function AdminMediaPage() {
       return setError("El link del video completo debe empezar con http:// o https://");
     }
 
-    // ✅ validación projects (suave)
+    // ✅ validación projects (exigimos Album/Name/Desc)
     if (isProjectsCategory) {
+      if (!album.trim()) return setError("Para Projects, completá el Album");
       if (!name.trim()) return setError("Para Projects, completá el Name");
       if (!description.trim()) return setError("Para Projects, completá la Description");
     }
@@ -260,7 +258,8 @@ export default function AdminMediaPage() {
             // legacy
             title: title.trim() || u.originalFilename || "",
 
-            // ✅ projects
+            // ✅ projects (BLINDADO: mandamos album siempre si está)
+            album: album.trim() || undefined,
             name: isProjectsCategory ? name.trim() : undefined,
             description: isProjectsCategory ? description.trim() : undefined,
 
@@ -273,6 +272,9 @@ export default function AdminMediaPage() {
             resourceType: u.resourceType,
             fullVideoUrl: type === "video" ? (fullVideoUrl.trim() || undefined) : undefined,
           };
+
+          // debug rápido (si querés ver qué manda)
+          // console.log("POST /api/media payload:", payload);
 
           const res = await fetch("/api/media", {
             method: "POST",
@@ -290,6 +292,7 @@ export default function AdminMediaPage() {
 
       // reset
       setTitle("");
+      setAlbum("");
       setName("");
       setDescription("");
       setIsFeatured(false);
@@ -332,6 +335,7 @@ export default function AdminMediaPage() {
     setEditTitle(m.title || "");
 
     // ✅ projects
+    setEditAlbum((m.album as any) || "");
     setEditName(m.name || "");
     setEditDescription(m.description || "");
 
@@ -342,6 +346,7 @@ export default function AdminMediaPage() {
   const cancelEdit = () => {
     setEditingId(null);
     setEditTitle("");
+    setEditAlbum("");
     setEditName("");
     setEditDescription("");
     setEditFeatured(false);
@@ -356,7 +361,7 @@ export default function AdminMediaPage() {
       return;
     }
 
-    // detect category name for this item (para decidir si manda name/description)
+    // detect category name for this item (para decidir si manda name/description/album)
     const current = items.find((x) => x._id === id);
     const currentCatName =
       current && typeof current.category !== "string" ? (current.category?.name ?? "") : "";
@@ -365,6 +370,7 @@ export default function AdminMediaPage() {
       (currentCatName || "").toLowerCase().trim() === "project";
 
     if (currentIsProjects) {
+      if (!editAlbum.trim()) return setError("Para Projects, el Album no puede estar vacío");
       if (!editName.trim()) return setError("Para Projects, el Name no puede estar vacío");
       if (!editDescription.trim()) return setError("Para Projects, la Description no puede estar vacía");
     }
@@ -378,7 +384,8 @@ export default function AdminMediaPage() {
           // legacy
           title: editTitle.trim(),
 
-          // ✅ projects
+          // ✅ projects (solo si es projects; vacío => null lo resuelve el backend)
+          album: currentIsProjects ? editAlbum.trim() : undefined,
           name: currentIsProjects ? editName.trim() : undefined,
           description: currentIsProjects ? editDescription.trim() : undefined,
 
@@ -410,15 +417,16 @@ export default function AdminMediaPage() {
       if (filterType !== "all" && m.type !== filterType) return false;
 
       if (filterCategoryId !== "all") {
-        const catId = typeof m.category === "string" ? m.category : m.category?._id;
+        const catId = typeof m.category === "string" ? m.category : (m.category as any)?._id;
         if (catId !== filterCategoryId) return false;
       }
 
       if (!needle) return true;
 
-      const catName = typeof m.category === "string" ? "" : (m.category?.name ?? "");
+      const catName = typeof m.category === "string" ? "" : ((m.category as any)?.name ?? "");
       const haystack = [
         m.title ?? "",
+        m.album ?? "",
         m.name ?? "",
         m.description ?? "",
         catName,
@@ -486,7 +494,7 @@ export default function AdminMediaPage() {
             />
             {isProjectsCategory && (
               <p className="mt-1 text-xs text-gray-500">
-                En <b>Projects</b> vamos a usar <b>Name/Description</b> para mostrar.
+                En <b>Projects</b> se requiere <b>Album + Name + Description</b>.
               </p>
             )}
           </div>
@@ -551,7 +559,21 @@ export default function AdminMediaPage() {
           {/* ✅ Projects fields */}
           {isProjectsCategory && (
             <>
-              <div className="md:col-span-3">
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium">Album (obligatorio)</label>
+                <input
+                  value={album}
+                  onChange={(e) => setAlbum(e.target.value)}
+                  className="mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-gray-200"
+                  placeholder="Ej: sesion1 / boda-abril / editorial-2026..."
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Tip: usá un nombre consistente:{" "}
+                  <span className="font-mono">boda-abril-2026</span>
+                </p>
+              </div>
+
+              <div className="md:col-span-2">
                 <label className="text-sm font-medium">Name (Project)</label>
                 <input
                   value={name}
@@ -560,7 +582,8 @@ export default function AdminMediaPage() {
                   placeholder="Ej: Editorial Verano / Boda / Campaña..."
                 />
               </div>
-              <div className="md:col-span-3">
+
+              <div className="md:col-span-2">
                 <label className="text-sm font-medium">Description</label>
                 <textarea
                   value={description}
@@ -617,7 +640,6 @@ export default function AdminMediaPage() {
                   </div>
                   <div className="mt-2 overflow-hidden rounded-lg border bg-gray-50">
                     {u.resourceType === "image" ? (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={u.url} alt="preview" className="h-40 w-full object-cover" />
                     ) : (
                       <video src={u.url} controls className="h-40 w-full object-cover" />
@@ -652,7 +674,7 @@ export default function AdminMediaPage() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 className="mt-1 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-200"
-                placeholder="Título, name/description, categoría, url/publicId..."
+                placeholder="Título, album, name/description, categoría, url/publicId..."
               />
             </div>
 
@@ -704,21 +726,30 @@ export default function AdminMediaPage() {
         ) : (
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredItems.map((m) => {
-              const catName = typeof m.category === "string" ? m.category : (m.category?.name ?? "-");
+              const catName =
+                typeof m.category === "string" ? m.category : ((m.category as any)?.name ?? "-");
               const isEditing = editingId === m._id;
-              const thisIsProjects = catName.toLowerCase().trim() === "projects" || catName.toLowerCase().trim() === "project";
+              const thisIsProjects =
+                catName.toLowerCase().trim() === "projects" || catName.toLowerCase().trim() === "project";
 
               return (
                 <div key={m._id} className="rounded-2xl border bg-white p-3">
                   <div className="text-xs text-gray-500">{catName}</div>
 
                   {!isEditing ? (
-                    <div className="mt-1 text-sm font-medium">
-                      {thisIsProjects ? (m.name || "(sin name)") : (m.title || "(sin título)")}
-                    </div>
+                    <>
+                      <div className="mt-1 text-sm font-medium">
+                        {thisIsProjects ? m.name || "(sin name)" : m.title || "(sin título)"}
+                      </div>
+
+                      {thisIsProjects && m.album && (
+                        <div className="mt-1 text-xs text-gray-600">
+                          Album: <span className="font-mono">{m.album}</span>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <>
-                      {/* legacy title */}
                       {!thisIsProjects && (
                         <input
                           value={editTitle}
@@ -728,9 +759,14 @@ export default function AdminMediaPage() {
                         />
                       )}
 
-                      {/* ✅ projects fields */}
                       {thisIsProjects && (
                         <>
+                          <input
+                            value={editAlbum}
+                            onChange={(e) => setEditAlbum(e.target.value)}
+                            className="mt-2 w-full rounded-lg border px-2 py-1 text-sm"
+                            placeholder="Album (obligatorio)"
+                          />
                           <input
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
@@ -754,8 +790,11 @@ export default function AdminMediaPage() {
 
                   <div className="mt-3 overflow-hidden rounded-xl border bg-gray-50">
                     {m.type === "photo" ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={m.url} alt={m.title || m.name || "media"} className="h-48 w-full object-cover" />
+                      <img
+                        src={m.url}
+                        alt={m.title || m.name || "media"}
+                        className="h-48 w-full object-cover"
+                      />
                     ) : (
                       <video src={m.url} controls className="h-48 w-full object-cover" />
                     )}

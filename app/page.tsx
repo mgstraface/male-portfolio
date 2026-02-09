@@ -3,7 +3,7 @@
 import HeroBanner from "./public/HeroBanner";
 import MediaCarousel from "./public/MediaCarousel";
 import ContactSection from "./public/ContactSection";
-import ProjectsSection from './public/ProjectsSection';
+import ProjectsSection from "./public/ProjectsSection";
 import { headers } from "next/headers";
 
 type Category = {
@@ -20,6 +20,7 @@ type MediaItem = {
   title?: string;
 
   // projects
+  album?: string | null;
   name?: string;
   description?: string;
 
@@ -30,6 +31,16 @@ type MediaItem = {
   isFeatured: boolean;
   fullVideoUrl?: string;
   createdAt?: string;
+};
+
+type ProjectGroup = {
+  key: string;
+  album: string | null;
+  count: number;
+  lastCreatedAt?: string;
+  types?: Array<"photo" | "video">;
+  cover?: MediaItem;
+  items: MediaItem[];
 };
 
 function catName(c: Category | string): string {
@@ -74,20 +85,31 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 export default async function HomePage() {
-  const cData = await getJson<{
-    ok: boolean;
-    categories?: Category[];
-    error?: string;
-  }>("/api/categories");
+  // categories + media (banner/carousel)
+  const [cData, mData, pData] = await Promise.all([
+    getJson<{
+      ok: boolean;
+      categories?: Category[];
+      error?: string;
+    }>("/api/categories"),
 
-  const mData = await getJson<{
-    ok: boolean;
-    items?: MediaItem[];
-    error?: string;
-  }>("/api/media");
+    getJson<{
+      ok: boolean;
+      items?: MediaItem[];
+      error?: string;
+    }>("/api/media"),
+
+    // ✅ NUEVO: projects agrupados por album
+    getJson<{
+      ok: boolean;
+      projects?: ProjectGroup[];
+      error?: string;
+    }>("/api/media/projects"),
+  ]);
 
   const categories = cData.ok ? cData.categories || [] : [];
   const items = mData.ok ? mData.items || [] : [];
+  const projectsGrouped = pData.ok ? pData.projects || [] : [];
 
   const findCat = (name: string) =>
     categories.find(
@@ -95,9 +117,7 @@ export default async function HomePage() {
     );
 
   const bannerCat = findCat("banner") || findCat("Banner");
-
   const carouselCat = findCat("carousel");
-  const projectsCat = findCat("projects") || findCat("Projects");
 
   const byCat = (cat: Category | undefined, fallbackName: string) => {
     // 1) si tengo cat, matcheo por ID (soporta string, _id o id)
@@ -114,46 +134,36 @@ export default async function HomePage() {
   const bannerItems = byCat(bannerCat, "banner");
   const carouselItems = byCat(carouselCat, "carousel");
 
-  // projects: si existe la categoría "Projects" usamos esa;
-  // si no, fallback por nombre "projects"
-  const projectItems = byCat(projectsCat, "projects");
-console.log("proye", projectItems)
-  // Hero: destacado o primero (foto o video)
+  // Hero: destacado o primero
   const banner = bannerItems.find((x) => x.isFeatured) || bannerItems[0] || null;
 
   // Carrusel: solo fotos
   const carousel = carouselItems.filter((x) => x.type === "photo");
 
-  // Projects: fotos o videos, ordenados por fecha desc
-  const projects = projectItems
-    .filter((x) => x.type === "photo" || x.type === "video")
-    .sort((a, b) => {
-      const ad = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const bd = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return bd - ad;
-    });
-
+  // Projects: vienen agrupados. (ya vienen ordenados por lastCreatedAt desc si usaste el pipeline)
+  const projects = projectsGrouped;
+console.log("proyectos",projects)
   return (
-<main className="min-h-screen bg-black">
-  {/* HERO FULL WIDTH */}
-  <HeroBanner item={banner} />
+    <main className="min-h-screen bg-black">
+      {/* HERO FULL WIDTH */}
+      <HeroBanner item={banner} />
 
-  {/* CONTENIDO ACOTADO */}
-  <div className="mx-auto max-w-6xl px-4 py-10 space-y-10">
-    <MediaCarousel
-      title="Galería"
-      subtitle="Una selección de fotos destacadas"
-      items={carousel}
-    />
+      {/* CONTENIDO ACOTADO */}
+      <div className="mx-auto max-w-6xl px-4 py-10 space-y-10">
+        <MediaCarousel
+          title="Galería"
+          subtitle="Una selección de fotos destacadas"
+          items={carousel}
+        />
 
-    <ProjectsSection
-      title="Projects"
-      subtitle="Selección de proyectos y sesiones"
-      items={projects}
-    />
+        <ProjectsSection
+          title="Projects"
+          subtitle="Selección de proyectos y sesiones"
+          items={projects as any}
+        />
 
-    <ContactSection />
-  </div>
-</main>
+        <ContactSection />
+      </div>
+    </main>
   );
 }

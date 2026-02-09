@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 
-import dbConnect from '@/lib/db';
+import dbConnect from "@/lib/db";
 import Media from "@/models/Media";
 import Category from "@/models/Category";
 import { requireAdmin } from "@/lib/auth"; // tu helper de auth (el mismo que uses en categories)
@@ -15,6 +15,9 @@ const CreateSchema = z.object({
   type: z.enum(["photo", "video"]),
   category: z.string(),
   url: z.string().min(1),
+
+  // ✅ NUEVO
+  album: z.string().optional(),
 
   thumbnail: z.string().optional(),
   isFeatured: z.boolean().optional(),
@@ -66,6 +69,7 @@ export async function POST(req: Request) {
       type,
       category,
       url,
+      album, // ✅ NUEVO
       thumbnail,
       isFeatured,
       publicId,
@@ -90,6 +94,9 @@ export async function POST(req: Request) {
       type,
       category,
       url,
+
+      // ✅ NUEVO (si viene vacío => null)
+      album: album?.trim() ? album.trim() : null,
 
       thumbnail: thumbnail?.trim() || "",
       isFeatured: !!isFeatured,

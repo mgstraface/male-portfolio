@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
-import dbConnect from '@/lib/db';
+import dbConnect from "@/lib/db";
 import Media from "@/models/Media";
 import { requireAdmin } from "@/lib/auth";
 import { cloudinaryDestroy } from "@/lib/cloudinary-server"; // tu helper server-side
@@ -9,6 +9,10 @@ import { z } from "zod";
 
 const UpdateSchema = z.object({
   title: z.string().optional(),
+
+  // ✅ NUEVO
+  album: z.string().optional(),
+
   name: z.string().optional(),
   description: z.string().optional(),
   isFeatured: z.boolean().optional(),
@@ -35,13 +39,24 @@ export async function PUT(
     }
 
     const update: any = {};
+
     if (typeof parsed.data.title === "string") update.title = parsed.data.title.trim();
+
+    // ✅ NUEVO: album (vacío => null)
+    if (typeof parsed.data.album === "string") {
+      const a = parsed.data.album.trim();
+      update.album = a ? a : null;
+    }
+
     if (typeof parsed.data.name === "string") update.name = parsed.data.name.trim();
     if (typeof parsed.data.description === "string") update.description = parsed.data.description.trim();
     if (typeof parsed.data.isFeatured === "boolean") update.isFeatured = parsed.data.isFeatured;
     if (typeof parsed.data.fullVideoUrl === "string") update.fullVideoUrl = parsed.data.fullVideoUrl.trim();
 
-    const item = await Media.findByIdAndUpdate(id, update, { new: true }).populate("category").lean();
+    const item = await Media.findByIdAndUpdate(id, update, { new: true })
+      .populate("category")
+      .lean();
+
     if (!item) return NextResponse.json({ ok: false, error: "No existe" }, { status: 404 });
 
     return NextResponse.json({ ok: true, item });
@@ -53,10 +68,7 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  _req: Request,
-  ctx: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     await requireAdmin();
     await dbConnect();
@@ -72,7 +84,6 @@ export async function DELETE(
         await cloudinaryDestroy(item.publicId, item.resourceType === "video" ? "video" : "image");
       } catch (e) {
         console.warn("Cloudinary destroy failed:", e);
-        // seguimos igual, pero podrías decidir fallar si querés
       }
     }
 
