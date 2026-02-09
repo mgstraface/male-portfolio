@@ -3,7 +3,7 @@
 import HeroBanner from "./public/HeroBanner";
 import MediaCarousel from "./public/MediaCarousel";
 import ContactSection from "./public/ContactSection";
-import ProjectsSection from "./public/ProjectsSection";
+import ProjectsSection from './public/ProjectsSection';
 import { headers } from "next/headers";
 
 type Category = {
@@ -95,7 +95,7 @@ export default async function HomePage() {
     );
 
   const bannerCat = findCat("banner") || findCat("Banner");
-  console.log(bannerCat)
+
   const carouselCat = findCat("carousel");
   const projectsCat = findCat("projects") || findCat("Projects");
 
@@ -117,7 +117,7 @@ export default async function HomePage() {
   // projects: si existe la categoría "Projects" usamos esa;
   // si no, fallback por nombre "projects"
   const projectItems = byCat(projectsCat, "projects");
-
+console.log("proye", projectItems)
   // Hero: destacado o primero (foto o video)
   const banner = bannerItems.find((x) => x.isFeatured) || bannerItems[0] || null;
 
