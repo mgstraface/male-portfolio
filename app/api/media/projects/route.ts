@@ -1,97 +1,145 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
-
 import dbConnect from "@/lib/db";
 import Media from "@/models/Media";
 import Category from "@/models/Category";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     await dbConnect();
 
-    const cat = await Category.findOne({ name: /^(projects|project)$/i }).select("_id").lean();
-    if (!cat?._id) {
-      return NextResponse.json(
-        { ok: false, error: "No existe la categoría Projects" },
-        { status: 404 }
-      );
+    const { searchParams } = new URL(req.url);
+    const page = Math.max(1, Number(searchParams.get("page") || 1));
+    const limit = Math.min(24, Math.max(1, Number(searchParams.get("limit") || 6))); // albums por página
+
+    // 1) category Projects
+    const projectsCat = await Category.findOne({
+      active: true,
+      name: { $regex: /^projects?$/i },
+    }).lean();
+
+    if (!projectsCat?._id) {
+      return NextResponse.json({ ok: true, page, limit, total: 0, projects: [] });
     }
 
-    const projects = await Media.aggregate([
-      { $match: { category: cat._id } },
-      { $sort: { createdAt: 1 } },
+    const skip = (page - 1) * limit;
 
-      // ✅ normalizamos album: trim + vacío => null
+    // 2) aggregation: agrupar por album (o por _id si album es null)
+    const pipeline: any[] = [
       {
-        $addFields: {
-          albumNorm: {
-            $let: {
-              vars: { a: { $ifNull: ["$album", ""] } },
-              in: {
-                $cond: [
-                  { $gt: [{ $strLenCP: { $trim: { input: "$$a" } } }, 0] },
-                  { $trim: { input: "$$a" } },
-                  null,
-                ],
-              },
-            },
-          },
+        $match: {
+          category: projectsCat._id,
+          type: { $in: ["photo", "video"] }, // ✅ incluye videos
         },
       },
+      { $sort: { createdAt: -1 } },
 
-      // ✅ clave de agrupación: albumNorm o _id (singleton)
+      // albumKey: si no hay album => usar _id (álbum único por item suelto)
       {
         $addFields: {
-          albumKey: { $ifNull: ["$albumNorm", { $toString: "$_id" }] },
+          albumKey: {
+            $ifNull: ["$album", { $toString: "$_id" }],
+          },
         },
       },
 
       {
         $group: {
           _id: "$albumKey",
-          album: { $first: "$albumNorm" },
-          count: { $sum: 1 },
-          lastCreatedAt: { $max: "$createdAt" },
-          types: { $addToSet: "$type" },
+          album: { $first: "$album" }, // puede ser null si era suelto
+          name: { $first: "$name" },
+          description: { $first: "$description" },
+          createdAt: { $first: "$createdAt" },
           items: {
             $push: {
               _id: "$_id",
-              title: "$title",
-              album: "$albumNorm",
-              name: "$name",
-              description: "$description",
               type: "$type",
               url: "$url",
               thumbnail: "$thumbnail",
-              isFeatured: "$isFeatured",
-              publicId: "$publicId",
               resourceType: "$resourceType",
               fullVideoUrl: "$fullVideoUrl",
               createdAt: "$createdAt",
             },
           },
+          count: { $sum: 1 },
+          hasVideo: {
+            $max: { $cond: [{ $eq: ["$type", "video"] }, 1, 0] },
+          },
         },
       },
 
-      { $sort: { lastCreatedAt: -1 } },
+      // orden de álbumes
+      { $sort: { createdAt: -1 } },
+
+      // pagination por álbum
+      {
+        $facet: {
+          meta: [{ $count: "total" }],
+          data: [{ $skip: skip }, { $limit: limit }],
+        },
+      },
 
       {
         $project: {
-          _id: 0,
-          key: "$_id",
-          album: 1,
-          count: 1,
-          lastCreatedAt: 1,
-          types: 1,
-          cover: { $arrayElemAt: ["$items", 0] },
-          items: 1,
+          total: { $ifNull: [{ $arrayElemAt: ["$meta.total", 0] }, 0] },
+          data: 1,
         },
       },
-    ]);
+    ];
 
-    return NextResponse.json({ ok: true, projects });
-  } catch (e: any) {
+    const agg = await Media.aggregate(pipeline);
+    const total = agg?.[0]?.total ?? 0;
+    const data = agg?.[0]?.data ?? [];
+
+    // shape final: cover + thumbs(2)
+    const projects = data.map((g: any) => {
+      const first = g.items?.[0];
+
+      const cover =
+        first?.type === "video"
+          ? {
+              type: "video",
+              url: first.url,
+              thumbnail: first.thumbnail || "",
+              fullVideoUrl: first.fullVideoUrl || "",
+            }
+          : {
+              type: "photo",
+              url: first?.url,
+            };
+
+      const thumbs = (g.items || [])
+        .filter((x: any) => x.type === "photo" || x.type === "video")
+        .slice(0, 2)
+        .map((x: any) => ({
+          _id: x._id,
+          type: x.type,
+          url: x.url,
+          thumbnail: x.thumbnail || "",
+          fullVideoUrl: x.fullVideoUrl || "",
+        }));
+
+      return {
+        album: g.album || g._id, // si era suelto, queda un id único
+        name: g.name || g.album || "Proyecto",
+        description: g.description || "",
+        count: g.count || thumbs.length || 1,
+        hasVideo: !!g.hasVideo,
+        cover,
+        thumbs,
+      };
+    });
+
+    return NextResponse.json({
+      ok: true,
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      projects,
+    });
+  } catch (e) {
     console.error(e);
-    return NextResponse.json({ ok: false, error: "Error trayendo projects" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: "Error getProjects" }, { status: 500 });
   }
 }
