@@ -4,7 +4,7 @@ import HeroBanner from "./public/HeroBanner";
 import MediaCarousel from "./public/MediaCarousel";
 import ContactSection from "./public/ContactSection";
 import ProjectsSection from "./public/ProjectsSection";
-import FooterSection from './public/FooterSection';
+import FooterSection from "./public/FooterSection";
 import { headers } from "next/headers";
 
 type Category = {
@@ -16,7 +16,6 @@ type Category = {
 
 type MediaItem = {
   _id: string;
-
   title?: string;
 
   album?: string | null;
@@ -44,20 +43,12 @@ type ProjectsApiGroup = {
 };
 
 type ProjectsApiResponse =
-  | {
-      ok: true;
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-      projects: ProjectsApiGroup[];
-    }
+  | { ok: true; page: number; limit: number; total: number; totalPages: number; projects: ProjectsApiGroup[] }
   | { ok: false; error: string };
 
 function catName(c: Category | string): string {
   return typeof c === "string" ? c : c?.name || "";
 }
-
 function catId(c: any): string {
   if (!c) return "";
   if (typeof c === "string") return c;
@@ -66,31 +57,17 @@ function catId(c: any): string {
 
 async function getBaseUrl() {
   const h = await headers();
-
-  const host =
-    h.get("x-forwarded-host") ||
-    h.get("host") ||
-    process.env.APP_URL?.replace(/^https?:\/\//, "");
-
+  const host = h.get("x-forwarded-host") || h.get("host") || process.env.APP_URL?.replace(/^https?:\/\//, "");
   if (!host) return "http://localhost:3000";
-
-  const proto =
-    h.get("x-forwarded-proto") ||
-    (process.env.NODE_ENV === "development" ? "http" : "https");
-
+  const proto = h.get("x-forwarded-proto") || (process.env.NODE_ENV === "development" ? "http" : "https");
   return `${proto}://${host}`;
 }
 
 async function getJson<T>(path: string): Promise<T> {
   const baseUrl = await getBaseUrl();
   const url = new URL(path, baseUrl);
-
   const res = await fetch(url, { cache: "no-store" });
-
-  if (!res.ok) {
-    throw new Error(`Error fetch ${path} (${res.status})`);
-  }
-
+  if (!res.ok) throw new Error(`Error fetch ${path} (${res.status})`);
   return res.json();
 }
 
@@ -98,8 +75,6 @@ export default async function HomePage() {
   const [cData, mData, pData] = await Promise.all([
     getJson<{ ok: boolean; categories?: Category[]; error?: string }>("/api/categories"),
     getJson<{ ok: boolean; items?: MediaItem[]; error?: string }>("/api/media"),
-
-    // ✅ pedimos la primera página (el resto lo hace el client con "Cargar más")
     getJson<ProjectsApiResponse>("/api/media/projects?page=1&limit=6"),
   ]);
 
@@ -111,7 +86,7 @@ export default async function HomePage() {
 
   const bannerCat = findCat("banner") || findCat("Banner");
   const carouselCat = findCat("carousel");
-const footerCat = findCat("footer") || findCat("Footer");
+  const footerCat = findCat("footer") || findCat("Footer");
 
   const byCat = (cat: Category | undefined, fallbackName: string) => {
     if (cat?._id) {
@@ -124,44 +99,48 @@ const footerCat = findCat("footer") || findCat("Footer");
 
   const bannerItems = byCat(bannerCat, "banner");
   const carouselItems = byCat(carouselCat, "carousel");
-const footerItems = byCat(footerCat, "footer");
-// opcional: featured primero
-footerItems.sort((a, b) => Number(b.isFeatured) - Number(a.isFeatured));
+  const footerItems = byCat(footerCat, "footer");
 
+  footerItems.sort((a, b) => Number(b.isFeatured) - Number(a.isFeatured));
 
   const banner = bannerItems.find((x) => x.isFeatured) || bannerItems[0] || null;
   const carousel = carouselItems.filter((x) => x.type === "photo");
 
+  // ✅ “sentada” (categoría)
+  const sittingCat = findCat("sentada") || findCat("Sentada") || findCat("sitting") || findCat("Sitting");
+  const sittingItems = byCat(sittingCat, "sentada");
+  const sitting = sittingItems.find((x) => x.isFeatured) || sittingItems[0] || null;
+
   return (
-  <main className="min-h-screen bg-black">
-    <HeroBanner item={banner} />
+    <main className="min-h-screen bg-black">
+      <HeroBanner item={banner} />
 
-    <div className="mx-auto max-w-6xl px-4 py-10 space-y-10">
-      <MediaCarousel
-        title="Galería"
-        subtitle="Una selección de fotos destacadas"
-        items={carousel}
+      {/* ✅ FULL WIDTH WRAPPER (sin max-w) */}
+      <div className="w-full px-4 sm:px-6 md:px-10 lg:px-14 2xl:px-20 py-10 space-y-12">
+        <MediaCarousel
+          title="Galería"
+          subtitle="Una selección de fotos destacadas"
+          items={carousel}
+          sitting={sitting}
+        />
+
+        <ProjectsSection
+          title="Projects"
+          subtitle="Selección de proyectos y sesiones"
+          initial={pData as any}
+          pageSize={6}
+        />
+
+        <ContactSection />
+      </div>
+
+      <FooterSection
+        items={footerItems.slice(0, 4)}
+        phone="+54 11 XXXX-XXXX"
+        instagramUrl="https://instagram.com/..."
+        tiktokUrl="https://www.tiktok.com/@maaleeee4"
+        youtubeUrl="https://youtube.com/@..."
       />
-
-      <ProjectsSection
-        title="Projects"
-        subtitle="Selección de proyectos y sesiones"
-        initial={pData as any}
-        pageSize={6}
-      />
-
-      <ContactSection />
-    </div>
-
-    {/* ✅ FOOTER full-width */}
-   <FooterSection
-    items={footerItems.slice(0, 4)}
-  phone="+54 11 XXXX-XXXX"
-  instagramUrl="https://instagram.com/..."
-  tiktokUrl="https://www.tiktok.com/@maaleeee4"
-  youtubeUrl="https://youtube.com/@..."
-/>
-
-  </main>
+    </main>
   );
 }
