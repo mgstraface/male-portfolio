@@ -119,10 +119,16 @@ export default function MediaCarousel({
       ) : null}
 
       <div className="flex items-start justify-between gap-4">
-        <div>
+        {/* <div>
           <div className="text-xs tracking-widest text-white/40 uppercase">Galería</div>
           <h2 className="mt-1 text-2xl font-semibold tracking-tight text-white">{title}</h2>
           {subtitle ? <p className="mt-1 text-sm text-white/60">{subtitle}</p> : null}
+        </div> */}
+
+         <div 
+        style={{ fontFamily: "var(--font-thirstycaps)" }} 
+        className="text-[75px] leading-none  italic text-red-600">
+          Destacadas
         </div>
 
         <div className="flex items-center gap-2">
