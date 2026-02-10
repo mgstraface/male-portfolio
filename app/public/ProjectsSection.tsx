@@ -144,7 +144,7 @@ function MediaThumb({
       onPointerEnter={() => isVideo && play()}
       onPointerLeave={() => isVideo && stop()}
       className={cn(
-        "group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 text-left",
+        "group relative overflow-hidden rounded-1xl border border-white/10 bg-white/5 text-left",
         "transition-transform duration-300 will-change-transform hover:scale-[1.02]",
         className
       )}
@@ -312,7 +312,7 @@ function ProjectModal({
         <div
           className={cn(
             "relative w-full max-w-6xl",
-            "rounded-3xl border border-white/10 bg-black",
+            "rounded-2xl border border-white/10 bg-black",
             "shadow-2xl",
             "max-h-[86vh] overflow-hidden"
           )}
@@ -340,7 +340,7 @@ function ProjectModal({
               </div>
             )}
 
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-3">
+            <div className="rounded-1xl border border-white/10 bg-white/5 p-3">
               <div className="relative overflow-hidden rounded-2xl bg-black">
                 <div className="h-[42vh] md:h-[50vh]">
                   {!current ? (
@@ -390,7 +390,7 @@ function ProjectModal({
                       key={String((it as any)._id || it.url)}
                       onClick={() => setActive(idx)}
                       className={cn(
-                        "relative shrink-0 overflow-hidden rounded-2xl border bg-white/5",
+                        "relative shrink-0 overflow-hidden rounded-1xl border bg-white/5",
                         "h-24 w-36 md:h-28 md:w-44",
                         idx === active ? "border-white/40" : "border-white/10 hover:border-white/25"
                       )}
@@ -466,7 +466,7 @@ function ProjectCard({
   const MEDIA_H = "h-[320px] md:h-[340px]";
 
   return (
-    <article className={cn("rounded-[28px] border border-white/10", bg, "p-6 md:p-8")}>
+    <article className={cn("rounded-[0px] border border-white/10", bg, "p-6 md:p-8")}>
       <div className="grid items-start gap-6 md:grid-cols-12">
         {/* TEXTO */}
         <div className="md:col-span-5 flex flex-col h-full">

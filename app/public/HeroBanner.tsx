@@ -158,7 +158,7 @@ export default function HeroBanner({ item }: { item: MediaItem | null }) {
             ].join(" ")}
           >
             <div className="overflow-hidden">
-              <div className="mx-auto max-w-[420px] rounded-2xl border border-white/15 bg-black/35 px-4 py-4 text-sm leading-relaxed text-white/85 backdrop-blur-sm">
+              <div className="mx-auto max-w-[420px] rounded-1xl border border-white/15 bg-black/35 px-4 py-4 text-sm leading-relaxed text-white/85 backdrop-blur-sm">
                 I am a freelance model with experience in creative, lifestyle, and commercial
                 projects. I bring versatility, professionalism, and a strong visual presence
                 to every collaboration.
