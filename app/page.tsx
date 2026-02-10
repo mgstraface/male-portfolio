@@ -106,16 +106,27 @@ export default async function HomePage() {
   const banner = bannerItems.find((x) => x.isFeatured) || bannerItems[0] || null;
   const carousel = carouselItems.filter((x) => x.type === "photo");
 
-  // ✅ “sentada” (categoría)
+  // ✅ “sentada” (para carousel)
   const sittingCat = findCat("sentada") || findCat("Sentada") || findCat("sitting") || findCat("Sitting");
   const sittingItems = byCat(sittingCat, "sentada");
   const sitting = sittingItems.find((x) => x.isFeatured) || sittingItems[0] || null;
+
+  // ✅ “sentadaContact” (para Contacto)
+  const sittingContactCat =
+    findCat("sentadaContact") ||
+    findCat("SentadaContact") ||
+    findCat("sentada_contact") ||
+    findCat("Sentada Contact") ||
+    findCat("contactSitting") ||
+    findCat("contact_sitting");
+
+  const sittingContactItems = byCat(sittingContactCat, "sentada2");
+  const sittingContact = sittingContactItems.find((x) => x.isFeatured) || sittingContactItems[0] || null;
 
   return (
     <main className="min-h-screen bg-black">
       <HeroBanner item={banner} />
 
-      {/* ✅ FULL WIDTH WRAPPER (sin max-w) */}
       <div className="w-full px-4 sm:px-6 md:px-10 lg:px-14 2xl:px-20 py-10 space-y-12">
         <MediaCarousel
           title="Galería"
@@ -124,14 +135,9 @@ export default async function HomePage() {
           sitting={sitting}
         />
 
-        <ProjectsSection
-          title="Projects"
-          subtitle="Selección de proyectos y sesiones"
-          initial={pData as any}
-          pageSize={6}
-        />
+        <ProjectsSection title="Projects" subtitle="Selección de proyectos y sesiones" initial={pData as any} pageSize={6} />
 
-        <ContactSection />
+        <ContactSection sittingContact={sittingContact} />
       </div>
 
       <FooterSection
