@@ -18,7 +18,7 @@ export default function HeroBanner({ item }: { item: MediaItem | null }) {
     <section
       className={[
         "relative overflow-hidden",
-        "rounded-3xl", // sacalo si lo querés recto
+        // "rounded-3xl", // sacalo si lo querés recto
         "bg-black text-white",
         "min-h-[520px] sm:min-h-[600px] lg:min-h-[640px]",
         // aire arriba para que el título no choque

@@ -66,7 +66,7 @@ export default function RootLayout({
      <body
   className={[
     // ✅ padding solo mobile, solo laterales
-    "px-4 sm:px-0",
+   
 
     // ✅ no mostrar scrollbar horizontal + evitar gesto pan-x
     "noscrollx",
