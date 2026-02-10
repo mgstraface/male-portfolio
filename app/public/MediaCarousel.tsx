@@ -71,7 +71,7 @@ export default function MediaCarousel({
           className="
             pointer-events-none
             absolute
-            left-1/2 top-0
+            right-[190] top-0
             z-30
           "
           style={
