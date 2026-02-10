@@ -470,9 +470,11 @@ function ProjectCard({
       <div className="grid items-start gap-6 md:grid-cols-12">
         {/* TEXTO */}
         <div className="md:col-span-5 flex flex-col h-full">
-          <div className="text-[11px] tracking-widest text-white/60 uppercase">Project</div>
+          {/* <div className="text-[11px] tracking-widest text-white/60 uppercase">Project</div> */}
 
-          <h3 className="mt-2 text-2xl md:text-[28px] font-semibold tracking-tight text-white">{title}</h3>
+          <h3 
+          style={{ fontFamily: "var(--font-kontrabanda)" }} 
+          className="mt-2 text-2xl md:text-[48px]  tracking-tight text-white">{title}</h3>
 
           {desc ? (
             <p className="mt-3 text-white/75 leading-relaxed">{desc}</p>
@@ -653,8 +655,11 @@ export default function ProjectsSection({
   return (
     <section id="projects" className="space-y-6">
       <header className="space-y-2">
-        <div className="text-xs tracking-widest text-white/40 uppercase">{title}</div>
-        <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white">{subtitle}</h2>
+        <div 
+        style={{ fontFamily: "var(--font-thirstycaps)" }} 
+        className="text-[75px] leading-none  italic text-red-600">
+         Proyectos
+        </div>
       </header>
 
       {error && (
