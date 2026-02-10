@@ -8,7 +8,7 @@ export default function ContactSection() {
         <p className="mt-1 text-sm text-white/60">Dejá tu mensaje y te respondemos.</p>
       </div>
 
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl">
+      <div className="rounded-1xl border border-white/10 bg-white/5 p-6 shadow-2xl">
         <ContactForm />
       </div>
     </section>
