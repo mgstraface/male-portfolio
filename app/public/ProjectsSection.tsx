@@ -12,7 +12,6 @@ type ProjectThumb = {
   thumbnail?: string;
   fullVideoUrl?: string;
 
-  // opcionales (a veces vienen)
   name?: string;
   description?: string;
   title?: string;
@@ -62,7 +61,6 @@ function cn(...arr: Array<string | false | undefined | null>) {
    - cloudinary video: /video/upload/
    Nunca confiar en `type`.
 -------------------------------- */
-
 function cloudinaryKindFromUrl(url?: string): "image" | "video" | "unknown" {
   const u = (url || "").toLowerCase();
   if (!u) return "unknown";
@@ -74,30 +72,21 @@ function cloudinaryKindFromUrl(url?: string): "image" | "video" | "unknown" {
 function isImageUrl(url?: string) {
   const k = cloudinaryKindFromUrl(url);
   if (k === "image") return true;
-  // fallback por extensión (por si no es cloudinary)
   return /\.(jpg|jpeg|png|webp|gif|avif)$/i.test(url || "");
 }
 
 function isVideoUrl(url?: string) {
   const k = cloudinaryKindFromUrl(url);
   if (k === "video") return true;
-  // fallback por extensión
   return /\.(mp4|webm|mov|m4v)$/i.test(url || "");
 }
 
-/** pick de poster REAL (imagen) */
 function pickPosterImage(it?: { url?: string; thumbnail?: string }) {
   if (!it) return undefined;
-
-  // 1) thumbnail si es imagen
   if (it.thumbnail && isImageUrl(it.thumbnail)) return it.thumbnail;
-
-  // 2) url si es imagen
   if (it.url && isImageUrl(it.url)) return it.url;
-
   return undefined;
 }
-
 
 function MediaThumb({
   item,
@@ -122,7 +111,6 @@ function MediaThumb({
     if (!v) return;
     try {
       v.currentTime = 0;
-      // play puede fallar si el navegador decide bloquear, pero al estar muted suele andar.
       void v.play();
     } catch {}
   };
@@ -140,7 +128,6 @@ function MediaThumb({
     <button
       type="button"
       onClick={onClick}
-      // ✅ hover real en desktop (y también sirve con stylus)
       onPointerEnter={() => isVideo && play()}
       onPointerLeave={() => isVideo && stop()}
       className={cn(
@@ -149,8 +136,7 @@ function MediaThumb({
         className
       )}
     >
-      {/* Poster BN */}
-            <img
+      <img
         src={poster}
         alt="thumb"
         className={cn(
@@ -166,16 +152,7 @@ function MediaThumb({
           const o = img.naturalWidth >= img.naturalHeight ? "h" : "v";
           onOrientation?.(o);
         }}
-        onLoadCapture={(e) => {
-          // ✅ fallback extra (algunos casos el onLoad no llega en fast refresh)
-          const img = e.currentTarget as HTMLImageElement;
-          if (img?.naturalWidth && img?.naturalHeight) {
-            const o = img.naturalWidth >= img.naturalHeight ? "h" : "v";
-            onOrientation?.(o);
-          }
-        }}
         ref={(img) => {
-          // ✅ si ya vino cacheada, no hay onLoad: lo detectamos acá
           if (!img) return;
           if (img.complete && img.naturalWidth && img.naturalHeight) {
             const o = img.naturalWidth >= img.naturalHeight ? "h" : "v";
@@ -184,8 +161,6 @@ function MediaThumb({
         }}
       />
 
-
-      {/* Hover video (encima del poster) */}
       {isVideo && (
         <video
           ref={videoRef}
@@ -194,7 +169,6 @@ function MediaThumb({
           playsInline
           loop
           preload="auto"
-          // ✅ no dependemos de eventos del video
           className={cn(
             "absolute inset-0 h-full w-full object-cover",
             "opacity-0 group-hover:opacity-100 transition-opacity duration-200"
@@ -256,7 +230,9 @@ function ProjectModal({
 
     (async () => {
       try {
-        const res = await fetch(`/api/media/projects/${encodeURIComponent(album)}`, { cache: "no-store" });
+        const res = await fetch(`/api/media/projects/${encodeURIComponent(album)}`, {
+          cache: "no-store",
+        });
         const data = (await res.json()) as AlbumItemsResponse;
         if (!res.ok || !data.ok) throw new Error(!data.ok ? data.error : "Error cargando álbum");
         if (!alive) return;
@@ -344,7 +320,9 @@ function ProjectModal({
               <div className="relative overflow-hidden rounded-2xl bg-black">
                 <div className="h-[42vh] md:h-[50vh]">
                   {!current ? (
-                    <div className="h-full w-full grid place-items-center text-white/60">Sin archivos</div>
+                    <div className="h-full w-full grid place-items-center text-white/60">
+                      Sin archivos
+                    </div>
                   ) : currentIsVideo ? (
                     <video
                       src={current.url}
@@ -425,7 +403,6 @@ function ProjectModal({
 }
 
 /** ---------- Card ---------- */
-/** ---------- Card ---------- */
 function ProjectCard({
   group,
   index,
@@ -441,23 +418,16 @@ function ProjectCard({
   const desc = group.description || "";
   const count = group.count || 1;
 
-  // ⚠️ NO usar cover para inferir portada (payload sucio). Usamos thumbs + URL cloudinary.
   const thumbs = group.thumbs || [];
 
-  // Fuente de verdad por URL cloudinary:
   const videoThumb = thumbs.find((t) => isVideoUrl(t.url));
   const imageThumb = thumbs.find((t) => isImageUrl(t.url));
 
-  // ✅ FIX: forceSingle depende SOLO de que existan 1 video y 1 imagen (no de posterImage)
   const forceSingle = !!videoThumb && !!imageThumb;
-
-  // ✅ poster real SIEMPRE la url de la imagen (más confiable que thumbnail)
   const posterImage = imageThumb?.url;
 
-  // Si no es forceSingle, lógica doble normal
   const showTwo = !forceSingle && count >= 2 && thumbs.length >= 2;
 
-  // orientación detectada (solo para doble)
   const [o1, setO1] = useState<"h" | "v">("v");
   const [o2, setO2] = useState<"h" | "v">("v");
 
@@ -466,15 +436,43 @@ function ProjectCard({
   const MEDIA_H = "h-[320px] md:h-[340px]";
 
   return (
-    <article className={cn("rounded-[0px] border border-white/10", bg, "p-6 md:p-8")}>
+   <article
+  className={cn(
+    "rounded-[0px] overflow-hidden",
+    "border border-white/25 ring-2 ring-white/15 ring-inset",
+
+    "ring-2 ring-white/10",        // 👈 engorda visual
+    "ring-inset",                  // 👈 que sea hacia adentro
+    bg,
+    "p-6 md:p-8"
+  )}
+>
       <div className="grid items-start gap-6 md:grid-cols-12">
         {/* TEXTO */}
         <div className="md:col-span-5 flex flex-col h-full">
-          {/* <div className="text-[11px] tracking-widest text-white/60 uppercase">Project</div> */}
+          <div className="relative mt-2">
+            {/* ✅ OUTLINE: ocupa el ancho pero NO genera overflow horizontal */}
+            <div
+              aria-hidden
+              style={{ fontFamily: "var(--font-outline)" }}
+              className="
+                absolute -top-2 inset-x-0
+                uppercase
+                leading-none tracking-widest
+                text-white/12
+                text-[64px] md:text-[90px] lg:text-[110px]
+                pointer-events-none
+                text-center
+                select-none
+              "
+            >
+              {title}
+            </div>
 
-          <h3 
-          style={{ fontFamily: "var(--font-kontrabanda)" }} 
-          className="mt-2 text-2xl md:text-[48px]  tracking-tight text-white">{title}</h3>
+            <div className="relative pt-10">
+              <div className="text-xl md:text-3xl font-semibold text-white">{title}</div>
+            </div>
+          </div>
 
           {desc ? (
             <p className="mt-3 text-white/75 leading-relaxed">{desc}</p>
@@ -492,7 +490,6 @@ function ProjectCard({
             </span>
           </div>
 
-          {/* ✅ botón abajo */}
           <button
             type="button"
             onClick={() => onOpen(group)}
@@ -504,19 +501,13 @@ function ProjectCard({
 
         {/* MEDIA */}
         <div className="md:col-span-7">
-          {/* SINGLE */}
           {!showTwo && (
             <div className={cn("relative", MEDIA_H)}>
               <MediaThumb
                 item={
                   forceSingle && videoThumb
-                    ? {
-                        // ✅ url del video + poster imagen REAL
-                        url: videoThumb.url,
-                        thumbnail: posterImage, // <- imagen
-                      }
+                    ? { url: videoThumb.url, thumbnail: posterImage }
                     : {
-                        // fallback: lo primero que haya
                         url: thumbs[0]?.url || group.cover?.url,
                         thumbnail: thumbs[0]?.thumbnail || group.cover?.thumbnail,
                       }
@@ -526,14 +517,12 @@ function ProjectCard({
                 onClick={() => onOpen(group)}
               />
 
-              {/* ✅ badge video SOLO mobile (y con z-10 por si algo lo tapa) */}
               {forceSingle && (
                 <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-white/20 bg-black/50 px-3 py-1 text-xs text-white backdrop-blur md:hidden">
                   video
                 </div>
               )}
 
-              {/* ✅ +N SOLO si NO es foto+video */}
               {!forceSingle && more > 0 && (
                 <div className="pointer-events-none absolute right-3 top-3 z-10 rounded-full border border-white/20 bg-black/50 px-3 py-1 text-xs text-white backdrop-blur">
                   +{more}
@@ -542,13 +531,13 @@ function ProjectCard({
             </div>
           )}
 
-          {/* DOBLE */}
           {showTwo && (
             <div className={cn("relative", MEDIA_H)}>
               <div
                 className={cn(
                   "relative h-full",
                   "grid gap-1",
+                  "pb-px", // ✅ FIX: evita micro-corte abajo
                   stackVertical ? "grid-cols-1 grid-rows-2" : "grid-cols-2"
                 )}
               >
@@ -581,7 +570,6 @@ function ProjectCard({
   );
 }
 
-
 /** ---------- Section (paginado + modal) ---------- */
 export default function ProjectsSection({
   initial,
@@ -596,9 +584,13 @@ export default function ProjectsSection({
 }) {
   const initialOk = initial && (initial as any).ok;
 
-  const [groups, setGroups] = useState<ProjectApiGroup[]>(initialOk ? (initial as any).projects || [] : []);
+  const [groups, setGroups] = useState<ProjectApiGroup[]>(
+    initialOk ? (initial as any).projects || [] : []
+  );
   const [page, setPage] = useState<number>(initialOk ? (initial as any).page || 1 : 1);
-  const [totalPages, setTotalPages] = useState<number>(initialOk ? (initial as any).totalPages || 1 : 1);
+  const [totalPages, setTotalPages] = useState<number>(
+    initialOk ? (initial as any).totalPages || 1 : 1
+  );
 
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(
@@ -607,7 +599,6 @@ export default function ProjectsSection({
 
   const canLoadMore = useMemo(() => page < totalPages, [page, totalPages]);
 
-  // modal state
   const [open, setOpen] = useState(false);
   const [activeGroup, setActiveGroup] = useState<ProjectApiGroup | null>(null);
 
@@ -629,7 +620,9 @@ export default function ProjectsSection({
 
     try {
       const nextPage = page + 1;
-      const res = await fetch(`/api/media/projects?page=${nextPage}&limit=${pageSize}`, { cache: "no-store" });
+      const res = await fetch(`/api/media/projects?page=${nextPage}&limit=${pageSize}`, {
+        cache: "no-store",
+      });
       const data = (await res.json()) as ProjectsApiResponse;
 
       if (!res.ok || !data.ok) throw new Error(!data.ok ? data.error : "Error cargando más");
@@ -653,9 +646,9 @@ export default function ProjectsSection({
   if (!groups || groups.length === 0) return null;
 
   return (
-    <section id="projects" className="space-y-6">
+    <section id="projects" className="space-y-6 overflow-x-hidden">
       <header className="space-y-2">
-           <div
+        <div
           style={{ fontFamily: "var(--font-thirstycaps)" }}
           className="text-[45px] sm:text-[75px] leading-none italic text-red-600"
         >

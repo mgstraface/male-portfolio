@@ -2,6 +2,14 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
+import { Bungee_Outline } from "next/font/google";
+
+const bungeeOutline = Bungee_Outline({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-outline",
+});
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -64,6 +72,7 @@ export default function RootLayout({
           monografitti.variable,
           sefa.variable,
           thirstyCaps.variable,
+          bungeeOutline.variable,
           "antialiased",
         ].join(" ")}
       >
