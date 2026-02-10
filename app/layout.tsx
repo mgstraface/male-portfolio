@@ -54,22 +54,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`
-        ${kontrabanda.variable}
-        ${miloner.variable}
-        ${monografitti.variable}
-        ${sefa.variable}
-        ${thirstyCaps.variable}
-      `}
-    >
+    <html lang="en">
       <body
-        className={`
-          ${geistSans.variable}
-          ${geistMono.variable}
-          antialiased
-        `}
+        className={[
+          geistSans.variable,
+          geistMono.variable,
+          kontrabanda.variable,
+          miloner.variable,
+          monografitti.variable,
+          sefa.variable,
+          thirstyCaps.variable,
+          "antialiased",
+        ].join(" ")}
       >
         {children}
       </body>

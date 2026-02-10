@@ -32,7 +32,9 @@ export default function HeroBanner({ item }: { item: MediaItem | null }) {
 
       {/* MALENA gigante */}
       <div className="pointer-events-none absolute inset-x-0 top-16 sm:top-10 lg:top-5 text-center">
-        <div className="select-none text-[64px] sm:text-[92px] lg:text-[120px] font-black tracking-tight text-white/90 leading-none">
+        <div 
+        style={{ fontFamily: "var(--font-sefa)" }} 
+        className="select-none text-[64px] sm:text-[92px] lg:text-[180px]  tracking-tight text-white/90 leading-none ">
           MALENA
         </div>
       </div>
@@ -101,8 +103,10 @@ export default function HeroBanner({ item }: { item: MediaItem | null }) {
           text-right
         "
       >
-        <div className="text-[44px] leading-none font-semibold italic text-red-600">
-          Male
+        <div 
+        style={{ fontFamily: "var(--font-thirstycaps)" }} 
+        className="text-[75px] leading-none  italic text-red-600">
+          Sobre mí
         </div>
 
         <p className="mt-3 text-sm leading-relaxed text-white/80">
