@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -10,6 +11,36 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const kontrabanda = localFont({
+  src: "../public/fonts/Kontrabanda.ttf",
+  variable: "--font-kontrabanda",
+  display: "swap",
+});
+
+const miloner = localFont({
+  src: "../public/fonts/MILONER-Medium.ttf",
+  variable: "--font-miloner",
+  display: "swap",
+});
+
+const monografitti = localFont({
+  src: "../public/fonts/Monografitti.ttf",
+  variable: "--font-monografitti",
+  display: "swap",
+});
+
+const sefa = localFont({
+  src: "../public/fonts/Sefa.otf",
+  variable: "--font-sefa",
+  display: "swap",
+});
+
+const thirstyCaps = localFont({
+  src: "../public/fonts/ThirstyCaps.otf",
+  variable: "--font-thirstycaps",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -23,9 +54,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      className={`
+        ${kontrabanda.variable}
+        ${miloner.variable}
+        ${monografitti.variable}
+        ${sefa.variable}
+        ${thirstyCaps.variable}
+      `}
+    >
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`
+          ${geistSans.variable}
+          ${geistMono.variable}
+          antialiased
+        `}
       >
         {children}
       </body>
