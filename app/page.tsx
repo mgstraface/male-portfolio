@@ -125,19 +125,40 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen bg-black">
+  
+
       <HeroBanner item={banner} />
 
+
       <div className="w-full px-4 sm:px-6 md:px-10 lg:px-14 2xl:px-20 py-10 space-y-12">
-        <MediaCarousel
-          title="Galería"
-          subtitle="Una selección de fotos destacadas"
-          items={carousel}
-          sitting={sitting}
-        />
+        
+      <MediaCarousel
+  title="Galería"
+  subtitle="Una selección de fotos destacadas"
+  items={carousel}
+  sitting={sitting}
+  trainingTitle="Formación"
+  trainingIntro="Bailarina y coreógrafa. Estudios y experiencias:"
+  trainingItems={[
+    "Estudio 1 – Contemporáneo (2019–2021)",
+    "Estudio 2 – Urbano / Heels (2021–2023)",
+    "Workshops: X, Y, Z",
+  ]}
+/>
 
         <ProjectsSection title="Projects" subtitle="Selección de proyectos y sesiones" initial={pData as any} pageSize={6} />
 
-        <ContactSection sittingContact={sittingContact} />
+       <ContactSection
+  sittingContact={sittingContact}
+  trainingTitle="Formación"
+  trainingIntro="Estudios y experiencias:"
+  trainingItems={[
+    "Estudio X – Contemporáneo",
+    "Estudio Y – Urbano / Heels",
+    "Workshops: ...",
+  ]}
+/>
+
       </div>
 
       <FooterSection

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 type MediaItem = {
   _id: string;
@@ -16,14 +16,22 @@ export default function MediaCarousel({
   subtitle,
   items,
   sitting,
+  trainingTitle = "Formación",
+  trainingIntro,
+  trainingItems = [],
 }: {
   title: string;
   subtitle?: string;
   items: MediaItem[];
   sitting?: MediaItem | null; // PNG recortada “sentada”
+  trainingTitle?: string;
+  trainingIntro?: string;
+  trainingItems?: string[];
 }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [openBio, setOpenBio] = useState(false);
+
   const count = items.length;
 
   useEffect(() => {
@@ -53,6 +61,18 @@ export default function MediaCarousel({
     return () => window.clearInterval(id);
   }, [paused, canAutoplay, count]);
 
+  // ✅ Cerrar modal con ESC
+  useEffect(() => {
+    if (!openBio) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenBio(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openBio]);
+
+  const canOpenBio = Boolean(trainingIntro) || (trainingItems?.length ?? 0) > 0;
+
   return (
     <section
       id="galeria"
@@ -64,49 +84,56 @@ export default function MediaCarousel({
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      {/* ✅ Overlay “sentada” */}
+      {/* ✅ Overlay “sentada” (X como lo tenías antes: calc(-50% + var(--sx))) */}
       {sitting?.url ? (
         <div
           aria-hidden="true"
-          className="
-            pointer-events-none
-            absolute
-            right-[190] top-0
-            z-30
-          "
+          className="absolute right-0 top-0 z-30 pointer-events-none"
           style={
             {
-              // 🔥 Corrimiento horizontal por breakpoint (default = mobile)
-              // mobile (<640): más a la derecha
-              ["--sx" as any]: "90px",
-              // desktop (>=768): un poco menos
-              // si querés más derecha en desktop, subí este valor
-              // (se aplica porque md redefine la variable)
+              ["--sx" as any]: "55px", // mobile
             } as React.CSSProperties
           }
         >
-          {/* redefino --sx en md con Tailwind (sin tocar style) */}
-          <div className="md:[--sx:140px]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={sitting.url}
-              alt={sitting.title || "sentada"}
-              loading="lazy"
-              className="
-                select-none
-                drop-shadow-[0_22px_40px_rgba(0,0,0,0.55)]
-                w-[400px] sm:w-[350px] md:w-[350px] lg:w-[500px]
-                -translate-y-[-2%] sm:-translate-y-6 md:-translate-y-[22%] md:-translate-x-[-45%]  -translate-x-[-70%]
-              "
-              style={{
-                // ✅ ACÁ estaba tu bug: era --sx2. Tiene que ser --sx.
-                transform: "translateX(calc(-50% + var(--sx)))",
-              }}
-            />
+          {/* redefino --sx por breakpoint */}
+          <div className="sm:[--sx:85px] md:[--sx:140px] lg:[--sx:190px]">
+            {/* ✅ Click/hover SOLO en la imagen */}
+            <button
+              type="button"
+              disabled={!canOpenBio}
+              onClick={() => canOpenBio && setOpenBio(true)}
+              className={`
+                pointer-events-auto
+                focus:outline-none
+                ${canOpenBio ? "cursor-pointer" : "cursor-default"}
+              `}
+              aria-label={canOpenBio ? "Ver formación" : "Imagen decorativa"}
+              title={canOpenBio ? "Ver formación" : undefined}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={sitting.url}
+                alt={sitting.title || "sentada"}
+                loading="lazy"
+                className={`
+                  relative left-1/2
+                  select-none
+                  drop-shadow-[0_22px_40px_rgba(0,0,0,0.55)]
+                  w-[300px] sm:w-[350px] md:w-[350px] lg:w-[500px]
+                  -translate-y-8 sm:-translate-y-[35%] md:-translate-y-[22%]
+                  transition-transform duration-200 ease-out
+                  ${canOpenBio ? "hover:scale-[1.04]" : ""}
+                `}
+                style={{
+                  transform: "translateX(calc(-75% + var(--sx)))",
+                }}
+              />
+            </button>
 
             {/* sombra suave (apoyo) */}
             <div
               className="
+                pointer-events-none
                 absolute left-1/2 -translate-x-1/2
                 -bottom-2
                 h-10 w-[75%]
@@ -118,50 +145,13 @@ export default function MediaCarousel({
         </div>
       ) : null}
 
+      {/* Header */}
       <div className="flex items-start justify-between gap-4">
-        {/* <div>
-          <div className="text-xs tracking-widest text-white/40 uppercase">Galería</div>
-          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-white">{title}</h2>
-          {subtitle ? <p className="mt-1 text-sm text-white/60">{subtitle}</p> : null}
-        </div> */}
-
         <div
           style={{ fontFamily: "var(--font-thirstycaps)" }}
           className="text-[45px] sm:text-[75px] leading-none italic text-red-600"
         >
           Destacadas
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={prev}
-            disabled={count <= 1}
-            className="
-              rounded-xl border border-white/15 bg-black/40
-              px-3 py-2 text-sm text-white
-              hover:bg-white/10
-              disabled:opacity-40 disabled:cursor-not-allowed
-            "
-            type="button"
-            aria-label="Anterior"
-            title="Anterior"
-          >
-            ←
-          </button>
-          <button
-            onClick={next}
-            disabled={count <= 1}
-            className="
-              rounded-xl border border-white/15 bg-black/40
-              px-3 py-2 text-sm text-white
-              hover:bg-white/10
-              disabled:opacity-40 disabled:cursor-not-allowed
-            "
-            type="button"
-            aria-label="Siguiente"
-            title="Siguiente"
-          >
-            →
-          </button>
         </div>
       </div>
 
@@ -185,44 +175,150 @@ export default function MediaCarousel({
                       className="absolute inset-0 h-full w-full object-cover"
                       loading="lazy"
                     />
-
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/70 to-transparent" />
-{/* 
-                    {m.title ? (
-                      <div className="absolute bottom-0 left-0 right-0 px-4 py-4">
-                        <div className="text-sm text-white/90">{m.title}</div>
-                      </div>
-                    ) : null} */}
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
+          {/* ✅ CONTROLES ABAJO (flechas + dots + autoplay) */}
           {count > 1 && (
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                {items.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setIndex(i)}
-                    type="button"
-                    aria-label={`Ir a ${i + 1}`}
-                    className={`
-                      h-2.5 w-2.5 rounded-full transition
-                      ${i === index ? "bg-white" : "bg-white/25 hover:bg-white/40"}
-                    `}
-                  />
-                ))}
+            <div className="mt-3 flex flex-col gap-3">
+              {/* Flechas */}
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  onClick={prev}
+                  className="
+                    rounded-xl border border-white/15 bg-black/40
+                    px-3 py-2 text-sm text-white
+                    hover:bg-white/10
+                  "
+                  type="button"
+                  aria-label="Anterior"
+                  title="Anterior"
+                >
+                  ←
+                </button>
+                <button
+                  onClick={next}
+                  className="
+                    rounded-xl border border-white/15 bg-black/40
+                    px-3 py-2 text-sm text-white
+                    hover:bg-white/10
+                  "
+                  type="button"
+                  aria-label="Siguiente"
+                  title="Siguiente"
+                >
+                  →
+                </button>
               </div>
 
-              <div className="text-xs text-white/50">
-                Autoplay {paused ? "(pausado)" : "(activo)"}
+              {/* Dots + autoplay */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  {items.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setIndex(i)}
+                      type="button"
+                      aria-label={`Ir a ${i + 1}`}
+                      className={`
+                        h-2.5 w-2.5 rounded-full transition
+                        ${i === index ? "bg-white" : "bg-white/25 hover:bg-white/40"}
+                      `}
+                    />
+                  ))}
+                </div>
+
+                <div className="text-xs text-white/50">
+                  Autoplay {paused ? "(pausado)" : "(activo)"}
+                </div>
               </div>
             </div>
           )}
         </>
       )}
+
+      {/* ✅ MODAL Formación */}
+      {openBio ? (
+        <div
+          className="fixed inset-0 z-[999] flex items-end sm:items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label={trainingTitle}
+        >
+          {/* overlay */}
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
+            onClick={() => setOpenBio(false)}
+            aria-label="Cerrar"
+          />
+
+          {/* panel */}
+          <div
+            className="
+              relative z-[1000]
+              w-full sm:w-[640px]
+              rounded-t-3xl sm:rounded-3xl
+              border border-white/15
+              bg-black/90
+              shadow-2xl
+              p-5 sm:p-6
+              text-white
+            "
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-xs tracking-widest text-white/50 uppercase">Sobre mí</div>
+                <h3 className="mt-1 text-xl sm:text-2xl font-semibold">{trainingTitle}</h3>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setOpenBio(false)}
+                className="
+                  rounded-xl border border-white/15 bg-white/5
+                  px-3 py-2 text-sm text-white
+                  hover:bg-white/10
+                "
+                aria-label="Cerrar"
+                title="Cerrar"
+              >
+                ✕
+              </button>
+            </div>
+
+            {trainingIntro ? (
+              <p className="mt-4 text-sm text-white/80 leading-relaxed">{trainingIntro}</p>
+            ) : null}
+
+            {trainingItems?.length ? (
+              <ul className="mt-4 space-y-2 text-sm text-white/85 list-disc pl-5">
+                {trainingItems.map((it, idx) => (
+                  <li key={`${it}-${idx}`}>{it}</li>
+                ))}
+              </ul>
+            ) : null}
+
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setOpenBio(false)}
+                className="
+                  rounded-xl border border-white/15 bg-white/5
+                  px-4 py-2 text-sm text-white
+                  hover:bg-white/10
+                "
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

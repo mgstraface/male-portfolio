@@ -24,3 +24,17 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ✅ bloquear scroll horizontal sin recortar layout */
+.noscrollx {
+  overflow-x: clip;            /* mejor que hidden: no crea scroll */
+  overscroll-behavior-x: none; /* evita "rebote" lateral */
+  touch-action: pan-y;         /* en mobile: solo scroll vertical */
+}
+
+/* ✅ por si algún navegador ignora clip */
+@supports not (overflow: clip) {
+  .noscrollx {
+    overflow-x: hidden;
+  }
+}

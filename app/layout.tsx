@@ -62,22 +62,29 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={[
-          geistSans.variable,
-          geistMono.variable,
-          kontrabanda.variable,
-          miloner.variable,
-          monografitti.variable,
-          sefa.variable,
-          thirstyCaps.variable,
-          bungeeOutline.variable,
-          "antialiased",
-        ].join(" ")}
-      >
-        {children}
-      </body>
+    <html  lang="en">
+     <body
+  className={[
+    // ✅ padding solo mobile, solo laterales
+    "px-4 sm:px-0",
+
+    // ✅ no mostrar scrollbar horizontal + evitar gesto pan-x
+    "noscrollx",
+
+    geistSans.variable,
+    geistMono.variable,
+    kontrabanda.variable,
+    miloner.variable,
+    monografitti.variable,
+    sefa.variable,
+    thirstyCaps.variable,
+    bungeeOutline.variable,
+    "antialiased",
+  ].join(" ")}
+>
+  {children}
+</body>
+
     </html>
   );
 }
