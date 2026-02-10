@@ -50,12 +50,14 @@ export default function FooterSection({
               Contacto
             </p>
 
-            <h3 style={{display:"flex", alignItems:"center", gap:"1rem"}} className="mt-2 text-2xl md:text-3xl font-semibold">
-              ¿Querés comunicarte con     <div 
-        style={{fontWeight:400, fontFamily: "var(--font-thirstycaps)" }} 
-        className="text-[75px] leading-none   italic text-red-600">
-         Malena?
+            <h3 style={{display:"flex", alignItems:"center", gap:"1rem"}} className="text-[20px] sm:text-[35px] mt-2 text-2xl  font-semibold">
+              ¿Querés comunicarte con           <div
+          style={{ fontFamily: "var(--font-thirstycaps)", fontWeight:400 }}
+          className="text-[55px] sm:text-[75px] leading-none italic text-red-600"
+        >
+          Malena
         </div>
+        ?
             </h3>
 
             <p className="mt-4 text-white/70 max-w-xl">
