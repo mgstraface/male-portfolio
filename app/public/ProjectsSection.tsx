@@ -546,7 +546,7 @@ function ProjectCard({
               <div
                 className={cn(
                   "relative h-full",
-                  "grid gap-4",
+                  "grid gap-1",
                   stackVertical ? "grid-cols-1 grid-rows-2" : "grid-cols-2"
                 )}
               >
