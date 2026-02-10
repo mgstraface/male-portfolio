@@ -33,7 +33,7 @@ export default function HeroBanner({ item }: { item: MediaItem | null }) {
       {/* MALENA gigante */}
       <div className="pointer-events-none absolute inset-x-0 top-16 sm:top-10 lg:top-5 text-center">
         <div 
-        style={{ fontFamily: "var(--font-sefa)" }} 
+        style={{ fontFamily: "var(--font-miloner)" }} 
         className="select-none text-[64px] sm:text-[92px] lg:text-[180px]  tracking-tight text-white/90 leading-none ">
           MALENA
         </div>
