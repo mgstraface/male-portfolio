@@ -187,12 +187,12 @@ export default function MediaCarousel({
                     />
 
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/70 to-transparent" />
-
+{/* 
                     {m.title ? (
                       <div className="absolute bottom-0 left-0 right-0 px-4 py-4">
                         <div className="text-sm text-white/90">{m.title}</div>
                       </div>
-                    ) : null}
+                    ) : null} */}
                   </div>
                 </div>
               ))}

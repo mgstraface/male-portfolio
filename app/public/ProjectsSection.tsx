@@ -655,10 +655,11 @@ export default function ProjectsSection({
   return (
     <section id="projects" className="space-y-6">
       <header className="space-y-2">
-        <div 
-        style={{ fontFamily: "var(--font-thirstycaps)" }} 
-        className="text-[75px] leading-none  italic text-red-600">
-         Proyectos
+           <div
+          style={{ fontFamily: "var(--font-thirstycaps)" }}
+          className="text-[45px] sm:text-[75px] leading-none italic text-red-600"
+        >
+          Proyectos
         </div>
       </header>
 
