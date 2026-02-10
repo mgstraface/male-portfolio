@@ -95,8 +95,8 @@ export default function MediaCarousel({
               className="
                 select-none
                 drop-shadow-[0_22px_40px_rgba(0,0,0,0.55)]
-                w-[350px] sm:w-[350px] md:w-[350px] lg:w-[500px]
-                -translate-y-[-50%] sm:-translate-y-6 md:-translate-y-[22%] md:-translate-x-[-45%]
+                w-[400px] sm:w-[350px] md:w-[350px] lg:w-[500px]
+                -translate-y-[-2%] sm:-translate-y-6 md:-translate-y-[22%] md:-translate-x-[-45%]  -translate-x-[-70%]
               "
               style={{
                 // ✅ ACÁ estaba tu bug: era --sx2. Tiene que ser --sx.
@@ -125,12 +125,12 @@ export default function MediaCarousel({
           {subtitle ? <p className="mt-1 text-sm text-white/60">{subtitle}</p> : null}
         </div> */}
 
-         <div 
-        style={{ fontFamily: "var(--font-thirstycaps)" }} 
-        className="text-[75px] leading-none  italic text-red-600">
+        <div
+          style={{ fontFamily: "var(--font-thirstycaps)" }}
+          className="text-[45px] sm:text-[75px] leading-none italic text-red-600"
+        >
           Destacadas
         </div>
-
         <div className="flex items-center gap-2">
           <button
             onClick={prev}
