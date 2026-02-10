@@ -160,7 +160,7 @@ export default function MediaCarousel({
       ) : (
         <>
           {/* VIEWPORT */}
-          <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black">
+          <div className="mt-4 overflow-hidden  border border-white/10 bg-black">
             <div
               className="flex transition-transform duration-700 ease-in-out"
               style={{ transform: `translateX(-${index * 100}%)` }}
