@@ -58,7 +58,7 @@ export default function MediaCarousel({
       id="galeria"
       className="
         relative
-        rounded-1xl border border-white/10 bg-white/5
+        rounded-1xl border border-white/10
         p-5 shadow-2xl
       "
       onMouseEnter={() => setPaused(true)}
