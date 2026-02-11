@@ -10,10 +10,9 @@ type CategoryUpdateBody = {
   active?: boolean;
 };
 
-export async function GET(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
+type Ctx = { params: { id: string } };
+
+export async function GET(_req: Request, { params }: Ctx) {
   try {
     await dbConnect();
 
@@ -21,7 +20,7 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "ID inválido" }, { status: 400 });
     }
 
-    const category = await Category.findById(params.id);
+    const category = await Category.findById(params.id).lean();
     if (!category) {
       return NextResponse.json({ ok: false, error: "No encontrado" }, { status: 404 });
     }
@@ -32,10 +31,7 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(req: Request, { params }: Ctx) {
   try {
     await requireAdmin();
     await dbConnect();
@@ -51,9 +47,11 @@ export async function PUT(
     if (body.type === "photo" || body.type === "video") update.type = body.type;
     if (typeof body.active === "boolean") update.active = body.active;
 
-    const updated = await Category.findByIdAndUpdate(params.id, update, {
-      new: true,
-    });
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ ok: false, error: "Sin cambios para actualizar" }, { status: 400 });
+    }
+
+    const updated = await Category.findByIdAndUpdate(params.id, update, { new: true }).lean();
 
     if (!updated) {
       return NextResponse.json({ ok: false, error: "No encontrado" }, { status: 404 });
@@ -68,10 +66,7 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(_req: Request, { params }: Ctx) {
   try {
     await requireAdmin();
     await dbConnect();
@@ -80,7 +75,7 @@ export async function DELETE(
       return NextResponse.json({ ok: false, error: "ID inválido" }, { status: 400 });
     }
 
-    const deleted = await Category.findByIdAndDelete(params.id);
+    const deleted = await Category.findByIdAndDelete(params.id).lean();
     if (!deleted) {
       return NextResponse.json({ ok: false, error: "No encontrado" }, { status: 404 });
     }
