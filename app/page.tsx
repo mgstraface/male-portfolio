@@ -5,7 +5,6 @@ import MediaCarousel from "./public/MediaCarousel";
 import ContactSection from "./public/ContactSection";
 import ProjectsSection from "./public/ProjectsSection";
 import FooterSection from "./public/FooterSection";
-import { headers } from "next/headers";
 
 type Category = {
   _id: string;
@@ -55,33 +54,29 @@ function catId(c: any): string {
   return c._id || c.id || "";
 }
 
-// async function getBaseUrl() {
-//   // ✅ 1) Si estás en Docker/VPS, forzamos un base interno (evita ECONNREFUSED)
-//   const internal = process.env.INTERNAL_BASE_URL || process.env.APP_URL;
-//   if (internal && internal.startsWith("http")) return internal;
-
-//   // ✅ 2) Fallback con headers (cuando estás detrás de proxy/dominio)
-//   const h = await headers();
-//   const host = h.get("x-forwarded-host") || h.get("host");
-
-//   const proto =
-//     h.get("x-forwarded-proto") ||
-//     (process.env.NODE_ENV === "development" ? "http" : "https");
-
-//   if (!host) return "http://127.0.0.1:3000";
-//   return `${proto}://${host}`;
-// }
-
-async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(path, { cache: "no-store" });
-
-  if (!res.ok) {
-    throw new Error(`Error fetch ${path} (${res.status})`);
-  }
-
-  return res.json();
+/**
+ * ✅ IMPORTANTÍSIMO:
+ * En server (Next) no uses fetch("/api/...") relativo.
+ * Usamos APP_URL (recomendado) y fallback a localhost:PORT.
+ *
+ * - Local: APP_URL=http://localhost:3000
+ * - Docker (adentro del container): APP_URL=http://localhost:3000
+ */
+function getServerBaseUrl() {
+  const env = process.env.APP_URL?.trim();
+  if (env) return env.replace(/\/$/, "");
+  const port = process.env.PORT || "3000";
+  return `http://localhost:${port}`;
 }
 
+async function getJson<T>(path: string): Promise<T> {
+  const base = getServerBaseUrl();
+  const url = `${base}${path.startsWith("/") ? "" : "/"}${path}`;
+
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Error fetch ${path} (${res.status})`);
+  return res.json();
+}
 
 export default async function HomePage() {
   const [cData, mData, pData] = await Promise.all([
@@ -137,40 +132,35 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen bg-black">
-  
-
       <HeroBanner item={banner} />
 
-
       <div className="w-full px-4 sm:px-6 md:px-10 lg:px-14 2xl:px-20 py-10 space-y-12">
-        
-      <MediaCarousel
-  title="Galería"
-  subtitle="Una selección de fotos destacadas"
-  items={carousel}
-  sitting={sitting}
-  trainingTitle="Formación"
-  trainingIntro="Bailarina y coreógrafa. Estudios y experiencias:"
-  trainingItems={[
-    "Estudio 1 – Contemporáneo (2019–2021)",
-    "Estudio 2 – Urbano / Heels (2021–2023)",
-    "Workshops: X, Y, Z",
-  ]}
-/>
+        <MediaCarousel
+          title="Galería"
+          subtitle="Una selección de fotos destacadas"
+          items={carousel}
+          sitting={sitting}
+          trainingTitle="Formación"
+          trainingIntro="Bailarina y coreógrafa. Estudios y experiencias:"
+          trainingItems={[
+            "Estudio 1 – Contemporáneo (2019–2021)",
+            "Estudio 2 – Urbano / Heels (2021–2023)",
+            "Workshops: X, Y, Z",
+          ]}
+        />
 
         <ProjectsSection title="Projects" subtitle="Selección de proyectos y sesiones" initial={pData as any} pageSize={6} />
 
-       <ContactSection
-  sittingContact={sittingContact}
-  trainingTitle="Formación"
-  trainingIntro="Estudios y experiencias:"
-  trainingItems={[
-    "Estudio X – Contemporáneo",
-    "Estudio Y – Urbano / Heels",
-    "Workshops: ...",
-  ]}
-/>
-
+        <ContactSection
+          sittingContact={sittingContact}
+          trainingTitle="Formación"
+          trainingIntro="Estudios y experiencias:"
+          trainingItems={[
+            "Estudio X – Contemporáneo",
+            "Estudio Y – Urbano / Heels",
+            "Workshops: ...",
+          ]}
+        />
       </div>
 
       <FooterSection
