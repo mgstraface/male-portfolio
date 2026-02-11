@@ -259,6 +259,17 @@ function ProjectModal({
       alive = false;
     };
   }, [open, album]);
+  // ✅ Bloquear scroll del background mientras el modal está abierto
+  useEffect(() => {
+    if (!open) return;
+
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -285,19 +296,21 @@ function ProjectModal({
       />
 
       <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div
-          className={cn(
-            "relative w-full max-w-6xl",
-            "rounded-2xl border border-white/10 bg-black",
-            "shadow-2xl",
-            "max-h-[86vh] overflow-hidden"
-          )}
-        >
+     <div
+  className={cn(
+    "relative w-full max-w-6xl",
+    "rounded-2xl border border-white/10 bg-black",
+    "shadow-2xl",
+    "max-h-[86vh] overflow-hidden",
+    "flex flex-col" // ✅ para separar header/body
+  )}
+>
+
           <div className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
             <div>
-              <div className="text-xs tracking-widest text-white/40 uppercase">Project</div>
-              <div className="mt-1 text-2xl font-semibold text-white">{title}</div>
-              {description ? <div className="mt-2 text-sm text-white/70">{description}</div> : null}
+              {/* <div className="text-xs tracking-widest text-white/40 uppercase">Project</div> */}
+              <div style={{ fontFamily: "var(--font-battle)", fontSize: "3rem" }} className="mt-1 text-2xl font-semibold text-white">{title}</div>
+              {description ? <div style={{ fontSize: "1.3rem" }} className="mt-2 text-sm text-white/70">{description}</div> : null}
             </div>
 
             <button
@@ -309,7 +322,8 @@ function ProjectModal({
             </button>
           </div>
 
-          <div className="px-6 py-5">
+          <div className="px-6 py-5 overflow-y-auto">
+
             {err && (
               <div className="mb-4 rounded-2xl border border-red-200/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
                 {err}
@@ -470,12 +484,12 @@ function ProjectCard({
             </div>
 
             <div className="relative pt-10">
-              <div className="text-xl md:text-3xl font-semibold text-white">{title}</div>
+              <div style={{ fontFamily: "var(--font-battle)" }} className="text-4xl md:text-5xl  text-white">{title}</div>
             </div>
           </div>
 
           {desc ? (
-            <p className="mt-3 text-white/75 leading-relaxed">{desc}</p>
+            <p style={{ fontFamily: "var(--font-nunito)" }}  className="mt-3 text-white/75 leading-relaxed text-2xl md:text-xl ">{desc}</p>
           ) : (
             <p className="mt-3 text-white/55 leading-relaxed">Proyecto sin descripción.</p>
           )}

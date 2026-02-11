@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import { Bungee_Outline } from "next/font/google";
+import { Nunito } from "next/font/google";
+
 
 const bungeeOutline = Bungee_Outline({
   weight: "400",
@@ -10,6 +12,12 @@ const bungeeOutline = Bungee_Outline({
   variable: "--font-outline",
 });
 
+const nunito = Nunito({
+  subsets: ["latin"],
+  variable: "--font-nunito",
+  weight: ["300", "400", "600", "700"],
+  display: "swap",
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,6 +32,18 @@ const geistMono = Geist_Mono({
 const kontrabanda = localFont({
   src: "../public/fonts/Kontrabanda.ttf",
   variable: "--font-kontrabanda",
+  display: "swap",
+});
+
+const punk = localFont({
+  src: "../public/fonts/punkkid.ttf",
+  variable: "--font-punk",
+  display: "swap",
+});
+
+const battle = localFont({
+  src: "../public/fonts/TheBattleCont.ttf",
+  variable: "--font-battle",
   display: "swap",
 });
 
@@ -63,10 +83,9 @@ export default function RootLayout({
 }>) {
   return (
     <html  lang="en">
-     <body
-  className={[
+    <body
+      className={[
     // ✅ padding solo mobile, solo laterales
-   
 
     // ✅ no mostrar scrollbar horizontal + evitar gesto pan-x
     "noscrollx",
@@ -79,6 +98,11 @@ export default function RootLayout({
     sefa.variable,
     thirstyCaps.variable,
     bungeeOutline.variable,
+    nunito.variable,
+    battle.variable,
+    punk.variable,
+
+    // ✅ antialiasing para texto
     "antialiased",
   ].join(" ")}
 >

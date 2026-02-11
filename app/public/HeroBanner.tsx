@@ -109,7 +109,9 @@ export default function HeroBanner({ item }: { item: MediaItem | null }) {
           Sobre mí
         </div>
 
-        <p className="mt-3 text-sm leading-relaxed text-white/80">
+        <p 
+          style={{ fontFamily: "var(--font-nunito)" }}
+          className="mt-3 text-sm leading-relaxed text-white/80">
           I am a freelance model with experience in creative, lifestyle, and commercial
           projects. I bring versatility, professionalism, and a strong visual presence
           to every collaboration.
