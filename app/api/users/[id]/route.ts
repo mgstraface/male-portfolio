@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { Types } from "mongoose";
 import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/db";
@@ -10,15 +10,16 @@ type UpdateUserBody = {
   password?: string;
 };
 
-export async function PUT(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+type Ctx = { params: Promise<{ id: string }> };
+
+export async function PUT(req: NextRequest, { params }: Ctx) {
   try {
     await requireAdmin();
     await dbConnect();
 
-    if (!Types.ObjectId.isValid(params.id)) {
+    const { id } = await params;
+
+    if (!Types.ObjectId.isValid(id)) {
       return NextResponse.json({ ok: false, error: "ID inválido" }, { status: 400 });
     }
 
@@ -33,11 +34,8 @@ export async function PUT(
       }
 
       const exists = await User.findOne({ email }).select("_id");
-      if (exists && String(exists._id) !== params.id) {
-        return NextResponse.json(
-          { ok: false, error: "Ya existe otro usuario con ese email" },
-          { status: 409 }
-        );
+      if (exists && String(exists._id) !== id) {
+        return NextResponse.json({ ok: false, error: "Ya existe otro usuario con ese email" }, { status: 409 });
       }
 
       update.email = email;
@@ -52,14 +50,12 @@ export async function PUT(
     }
 
     if (Object.keys(update).length === 0) {
-      return NextResponse.json(
-        { ok: false, error: "Nada para actualizar" },
-        { status: 400 }
-      );
+      return NextResponse.json({ ok: false, error: "Nada para actualizar" }, { status: 400 });
     }
 
-    const updated = await User.findByIdAndUpdate(params.id, update, { new: true })
-      .select("email role createdAt updatedAt");
+    const updated = await User.findByIdAndUpdate(id, update, { new: true }).select(
+      "email role createdAt updatedAt"
+    );
 
     if (!updated) {
       return NextResponse.json({ ok: false, error: "No encontrado" }, { status: 404 });
@@ -74,19 +70,18 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(_req: NextRequest, { params }: Ctx) {
   try {
     await requireAdmin();
     await dbConnect();
 
-    if (!Types.ObjectId.isValid(params.id)) {
+    const { id } = await params;
+
+    if (!Types.ObjectId.isValid(id)) {
       return NextResponse.json({ ok: false, error: "ID inválido" }, { status: 400 });
     }
 
-    const deleted = await User.findByIdAndDelete(params.id).select("_id");
+    const deleted = await User.findByIdAndDelete(id).select("_id");
     if (!deleted) {
       return NextResponse.json({ ok: false, error: "No encontrado" }, { status: 404 });
     }
