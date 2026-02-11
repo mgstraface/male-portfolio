@@ -1,14 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* app/api/media/projects/[album]/route.ts */
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Media from "@/models/Media";
 import Category from "@/models/Category";
 
-export async function GET(_req: Request, ctx: { params: Promise<{ album: string }> }) {
+type Ctx = { params: Promise<{ album: string }> };
+
+export async function GET(_req: NextRequest, { params }: Ctx) {
   try {
     await dbConnect();
-    const { album } = await ctx.params;
+
+    const { album } = await params;
     const decodedAlbum = decodeURIComponent(album || "").trim();
 
     if (!decodedAlbum) {
@@ -23,7 +26,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ album: string 
       .lean();
 
     const catIds = cats.map((c: any) => c._id);
-    if (catIds.length === 0) return NextResponse.json({ ok: true, album: decodedAlbum, items: [] });
+    if (catIds.length === 0) {
+      return NextResponse.json({ ok: true, album: decodedAlbum, items: [] });
+    }
 
     const items = await Media.find({
       category: { $in: catIds },
