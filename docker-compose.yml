@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  male-portfolio:
+    build: .
+    container_name: male-portfolio
+    restart: unless-stopped
+    ports:
+      - "3001:3000"   # afuera 3001, adentro 3000
+    environment:
+      NODE_ENV: production
+
+      MONGODB_URI: mongodb://root:male_db_3548764@149.50.145.115:27019/male_portfolio?authSource=admin
+
+      JWT_SECRET: male_super_secret_change_me_please_44444
+      JWT_EXPIRES_IN: 7d
+
+      NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: dlyvvy3ah
+      NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET: ml_default
+      NEXT_PUBLIC_CLOUDINARY_FOLDER: male-portfolio
+
+      CLOUDINARY_CLOUD_NAME: dlyvvy3ah
+      CLOUDINARY_API_KEY: 232585385489886
+      CLOUDINARY_API_SECRET: T232585385489886
