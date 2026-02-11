@@ -55,31 +55,33 @@ function catId(c: any): string {
   return c._id || c.id || "";
 }
 
-async function getBaseUrl() {
-  // ✅ 1) Si estás en Docker/VPS, forzamos un base interno (evita ECONNREFUSED)
-  const internal = process.env.INTERNAL_BASE_URL || process.env.APP_URL;
-  if (internal && internal.startsWith("http")) return internal;
+// async function getBaseUrl() {
+//   // ✅ 1) Si estás en Docker/VPS, forzamos un base interno (evita ECONNREFUSED)
+//   const internal = process.env.INTERNAL_BASE_URL || process.env.APP_URL;
+//   if (internal && internal.startsWith("http")) return internal;
 
-  // ✅ 2) Fallback con headers (cuando estás detrás de proxy/dominio)
-  const h = await headers();
-  const host = h.get("x-forwarded-host") || h.get("host");
+//   // ✅ 2) Fallback con headers (cuando estás detrás de proxy/dominio)
+//   const h = await headers();
+//   const host = h.get("x-forwarded-host") || h.get("host");
 
-  const proto =
-    h.get("x-forwarded-proto") ||
-    (process.env.NODE_ENV === "development" ? "http" : "https");
+//   const proto =
+//     h.get("x-forwarded-proto") ||
+//     (process.env.NODE_ENV === "development" ? "http" : "https");
 
-  if (!host) return "http://127.0.0.1:3000";
-  return `${proto}://${host}`;
-}
-
+//   if (!host) return "http://127.0.0.1:3000";
+//   return `${proto}://${host}`;
+// }
 
 async function getJson<T>(path: string): Promise<T> {
-  const baseUrl = await getBaseUrl();
-  const url = new URL(path, baseUrl);
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`Error fetch ${path} (${res.status})`);
+  const res = await fetch(path, { cache: "no-store" });
+
+  if (!res.ok) {
+    throw new Error(`Error fetch ${path} (${res.status})`);
+  }
+
   return res.json();
 }
+
 
 export default async function HomePage() {
   const [cData, mData, pData] = await Promise.all([
