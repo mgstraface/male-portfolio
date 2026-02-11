@@ -160,20 +160,35 @@ export default function MediaCarousel({
       ) : (
         <>
           {/* VIEWPORT */}
-          <div className="mt-4 overflow-hidden  border border-white/10 bg-black">
+         <div
+  className="
+    mt-4
+    overflow-hidden
+    border border-white/10
+    bg-black
+
+    /* ✅ MOBILE full-bleed */
+    w-screen
+    relative left-1/2 -translate-x-1/2
+    /* ✅ DESKTOP vuelve a normal */
+    sm:w-full sm:left-auto sm:translate-x-0
+  "
+>
             <div
               className="flex transition-transform duration-700 ease-in-out"
               style={{ transform: `translateX(-${index * 100}%)` }}
             >
               {items.map((m) => (
                 <div key={m._id} className="w-full shrink-0">
-                  <div className="relative h-[360px] sm:h-[420px] md:h-[520px]">
+                  <div className="relative h-[380px] sm:h-[460px] md:h-[620px] lg:h-[700px]">
+
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={m.url}
                       alt={m.title || "foto"}
                       className="absolute inset-0 h-full w-full object-cover"
                       loading="lazy"
+
                     />
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/70 to-transparent" />
                   </div>
