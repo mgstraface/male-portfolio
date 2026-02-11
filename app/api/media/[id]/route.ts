@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Media from "@/models/Media";
 import { requireAdmin } from "@/lib/auth";
-import { cloudinaryDestroy } from "@/lib/cloudinary-server"; // tu helper server-side
-
+import { cloudinaryDestroy } from "@/lib/cloudinary-server";
 import { z } from "zod";
 
 const UpdateSchema = z.object({
@@ -19,15 +18,14 @@ const UpdateSchema = z.object({
   fullVideoUrl: z.string().optional(),
 });
 
-export async function PUT(
-  req: Request,
-  ctx: { params: Promise<{ id: string }> } // ✅ Next 16 “params Promise”
-) {
+type Ctx = { params: Promise<{ id: string }> };
+
+export async function PUT(req: NextRequest, { params }: Ctx) {
   try {
     await requireAdmin();
     await dbConnect();
 
-    const { id } = await ctx.params;
+    const { id } = await params;
 
     const body = await req.json();
     const parsed = UpdateSchema.safeParse(body);
@@ -68,12 +66,12 @@ export async function PUT(
   }
 }
 
-export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function DELETE(_req: NextRequest, { params }: Ctx) {
   try {
     await requireAdmin();
     await dbConnect();
 
-    const { id } = await ctx.params;
+    const { id } = await params;
 
     const item = await Media.findById(id);
     if (!item) return NextResponse.json({ ok: false, error: "No existe" }, { status: 404 });

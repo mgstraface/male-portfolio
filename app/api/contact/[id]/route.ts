@@ -1,16 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Contact from "@/models/Contact";
 import { requireAdmin } from "@/lib/auth";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function PUT(req: Request, ctx: Ctx) {
+export async function PUT(req: NextRequest, { params }: Ctx) {
   try {
     await requireAdmin();
     await dbConnect();
 
-    const { id } = await ctx.params;
+    const { id } = await params;
     const body = (await req.json()) as { read?: boolean };
 
     const item = await Contact.findById(id);
@@ -33,12 +33,12 @@ export async function PUT(req: Request, ctx: Ctx) {
   }
 }
 
-export async function DELETE(_req: Request, ctx: Ctx) {
+export async function DELETE(_req: NextRequest, { params }: Ctx) {
   try {
     await requireAdmin();
     await dbConnect();
 
-    const { id } = await ctx.params;
+    const { id } = await params;
 
     const item = await Contact.findById(id);
     if (!item) {
