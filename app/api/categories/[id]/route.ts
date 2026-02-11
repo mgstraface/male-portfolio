@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { Types } from "mongoose";
 import dbConnect from "@/lib/db";
 import Category from "@/models/Category";
@@ -10,17 +10,19 @@ type CategoryUpdateBody = {
   active?: boolean;
 };
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
-export async function GET(_req: Request, { params }: Ctx) {
+export async function GET(_req: NextRequest, { params }: Ctx) {
   try {
     await dbConnect();
 
-    if (!Types.ObjectId.isValid(params.id)) {
+    const { id } = await params;
+
+    if (!Types.ObjectId.isValid(id)) {
       return NextResponse.json({ ok: false, error: "ID inválido" }, { status: 400 });
     }
 
-    const category = await Category.findById(params.id).lean();
+    const category = await Category.findById(id);
     if (!category) {
       return NextResponse.json({ ok: false, error: "No encontrado" }, { status: 404 });
     }
@@ -31,12 +33,14 @@ export async function GET(_req: Request, { params }: Ctx) {
   }
 }
 
-export async function PUT(req: Request, { params }: Ctx) {
+export async function PUT(req: NextRequest, { params }: Ctx) {
   try {
     await requireAdmin();
     await dbConnect();
 
-    if (!Types.ObjectId.isValid(params.id)) {
+    const { id } = await params;
+
+    if (!Types.ObjectId.isValid(id)) {
       return NextResponse.json({ ok: false, error: "ID inválido" }, { status: 400 });
     }
 
@@ -47,11 +51,7 @@ export async function PUT(req: Request, { params }: Ctx) {
     if (body.type === "photo" || body.type === "video") update.type = body.type;
     if (typeof body.active === "boolean") update.active = body.active;
 
-    if (Object.keys(update).length === 0) {
-      return NextResponse.json({ ok: false, error: "Sin cambios para actualizar" }, { status: 400 });
-    }
-
-    const updated = await Category.findByIdAndUpdate(params.id, update, { new: true }).lean();
+    const updated = await Category.findByIdAndUpdate(id, update, { new: true });
 
     if (!updated) {
       return NextResponse.json({ ok: false, error: "No encontrado" }, { status: 404 });
@@ -66,16 +66,18 @@ export async function PUT(req: Request, { params }: Ctx) {
   }
 }
 
-export async function DELETE(_req: Request, { params }: Ctx) {
+export async function DELETE(_req: NextRequest, { params }: Ctx) {
   try {
     await requireAdmin();
     await dbConnect();
 
-    if (!Types.ObjectId.isValid(params.id)) {
+    const { id } = await params;
+
+    if (!Types.ObjectId.isValid(id)) {
       return NextResponse.json({ ok: false, error: "ID inválido" }, { status: 400 });
     }
 
-    const deleted = await Category.findByIdAndDelete(params.id).lean();
+    const deleted = await Category.findByIdAndDelete(id);
     if (!deleted) {
       return NextResponse.json({ ok: false, error: "No encontrado" }, { status: 404 });
     }
