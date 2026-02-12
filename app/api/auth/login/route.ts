@@ -50,10 +50,7 @@ export async function POST(req: Request) {
     const userDoc = await User.findOne({ email }).select("email password role");
 
     if (!userDoc) {
-      return NextResponse.json(
-        { ok: false, error: "Credenciales inválidas" },
-        { status: 401 }
-      );
+      return NextResponse.json({ ok: false, error: "Credenciales inválidas" }, { status: 401 });
     }
 
     const user = {
@@ -64,12 +61,8 @@ export async function POST(req: Request) {
     };
 
     const valid = await bcrypt.compare(password, user.password);
-
     if (!valid) {
-      return NextResponse.json(
-        { ok: false, error: "Credenciales inválidas" },
-        { status: 401 }
-      );
+      return NextResponse.json({ ok: false, error: "Credenciales inválidas" }, { status: 401 });
     }
 
     const jwtSecret = getEnv("JWT_SECRET");
@@ -88,13 +81,17 @@ export async function POST(req: Request) {
       role: user.role,
     };
 
+    // ✅ detectar si la request viene por HTTPS (Traefik setea x-forwarded-proto)
+    const xfProto = req.headers.get("x-forwarded-proto") || "";
+    const isHttps = xfProto.toLowerCase() === "https";
+
     const res = NextResponse.json({ ok: true, user: safeUser });
 
     res.cookies.set({
       name: "token",
       value: token,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isHttps, // ✅ SOLO secure si HTTPS real
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 7, // 7 días
@@ -105,9 +102,6 @@ export async function POST(req: Request) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("LOGIN_ERROR:", message);
 
-    return NextResponse.json(
-      { ok: false, error: "Error interno" },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
   }
 }

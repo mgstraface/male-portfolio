@@ -165,10 +165,10 @@ export default async function HomePage() {
 
       <FooterSection
         items={footerItems.slice(0, 4)}
-        phone="+54 11 XXXX-XXXX"
-        instagramUrl="https://instagram.com/..."
+        phone="+54 3401 43-4757"
+        instagramUrl="https://instagram.com/malestraface"
         tiktokUrl="https://www.tiktok.com/@maaleeee4"
-        youtubeUrl="https://youtube.com/@..."
+        youtubeUrl="https://youtube.com/@malenastraface3406"
       />
     </main>
   );
