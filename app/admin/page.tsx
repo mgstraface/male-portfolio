@@ -30,7 +30,7 @@ export default async function AdminHomePage() {
 
       <div className="rounded-2xl border bg-white p-5">
         <p className="text-sm text-gray-600">
-          ✅ Entraste al Admin. Ahora armamos las secciones: Categorías, Media, Mensajes y Usuarios.
+          ✅Admin completo para manejar categorías, media, mensajes y usuarios. Elimina con cuidado, especialmente en Proyectos, donde el borrado es permanente (incluye eliminación en Cloudinary). Para subir media de banner o hero, usá el endpoint de media pero asignando la categoría correspondiente. Si tenés dudas, revisá el código o consultame antes de hacer cambios significativos.
         </p>
       </div>
 
