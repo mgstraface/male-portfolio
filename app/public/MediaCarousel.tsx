@@ -119,14 +119,14 @@ export default function MediaCarousel({
                   relative left-1/2
                   select-none
                   drop-shadow-[0_22px_40px_rgba(0,0,0,0.55)]
-                  w-[300px] sm:w-[350px] md:w-[350px] lg:w-[500px]
-                  -translate-y-8 sm:-translate-y-[35%] md:-translate-y-[22%]
+                  w-[150px] sm:w-[350px] md:w-[350px] lg:w-[230px]
+                  -translate-y-8 sm:-translate-y-[35%] md:-translate-y-[18%] md:-translate-x-[120%] -translate-x-[48%]
                   transition-transform duration-200 ease-out
                   ${canOpenBio ? "hover:scale-[1.04]" : ""}
                 `}
-                style={{
-                  transform: "translateX(calc(-75% + var(--sx)))",
-                }}
+                // style={{
+                //   transform: "translateX(calc(-180% + var(--sx)))",
+                // }}
               />
             </button>
 

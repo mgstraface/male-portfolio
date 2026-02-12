@@ -88,8 +88,8 @@ export default function ContactSection({
                     className={`
                       select-none
                       drop-shadow-[0_22px_40px_rgba(0,0,0,0.55)]
-                      w-[180px] sm:w-[260px] md:w-[200px] lg:w-[230px]
-                      translate-y-[-48%] sm:translate-y-[-45%] md:translate-y-[-42%] lg:translate-y-[-45%]
+                      w-[150px] sm:w-[260px] md:w-[200px] lg:w-[230px]
+                      translate-y-[-42%] sm:translate-y-[-45%] md:translate-y-[-42%] lg:translate-y-[-44%]
                       transition-transform duration-200 ease-out
                       ${canOpenBio ? "hover:scale-[1.04]" : ""}
                     `}
