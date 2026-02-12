@@ -17,24 +17,23 @@ export default function HeroBanner({ item }: { item: MediaItem | null }) {
   return (
     <section
       className={[
-        "relative overflow-hidden",
-        // "rounded-3xl", // sacalo si lo querés recto
+        "relative z-20 overflow-hidden", // ✅ FIX z-index
         "bg-black text-white",
         "min-h-[520px] sm:min-h-[600px] lg:min-h-[640px]",
-        // aire arriba para que el título no choque
         "pt-16 sm:pt-20 lg:pt-24",
       ].join(" ")}
     >
-      {/* líneas finas (decorativas) */}
+      {/* líneas finas decorativas */}
       <div className="absolute left-8 top-6 h-px w-40 bg-white/25" />
       <div className="absolute left-8 top-10 h-px w-56 bg-white/15" />
       <div className="absolute left-6 top-6 h-40 w-px bg-white/15" />
 
       {/* MALENA gigante */}
       <div className="pointer-events-none absolute inset-x-0 top-16 sm:top-10 lg:top-5 text-center">
-        <div 
-        style={{ fontFamily: "var(--font-miloner)" }} 
-        className="select-none text-[64px] sm:text-[92px] lg:text-[180px]  tracking-tight text-white/90 leading-none ">
+        <div
+          style={{ fontFamily: "var(--font-miloner)" }}
+          className="select-none text-[64px] sm:text-[92px] lg:text-[180px] tracking-tight text-white/90 leading-none"
+        >
           MALENA
         </div>
       </div>
@@ -56,7 +55,6 @@ export default function HeroBanner({ item }: { item: MediaItem | null }) {
             Subí una <b>imagen PNG</b> (sin fondo) a la categoría <b>Banner</b>.
           </div>
         ) : item.type === "photo" ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={item.url}
             alt={item.title || "banner"}
@@ -103,15 +101,17 @@ export default function HeroBanner({ item }: { item: MediaItem | null }) {
           text-right
         "
       >
-        <div 
-        style={{ fontFamily: "var(--font-thirstycaps)" }} 
-        className="text-[75px] leading-none  italic text-red-600">
+        <div
+          style={{ fontFamily: "var(--font-thirstycaps)" }}
+          className="text-[75px] leading-none italic text-red-600"
+        >
           Sobre mí
         </div>
 
-        <p 
+        <p
           style={{ fontFamily: "var(--font-nunito)" }}
-          className="mt-3 text-sm leading-relaxed text-white/80">
+          className="mt-3 text-sm leading-relaxed text-white/80"
+        >
           I am a freelance model with experience in creative, lifestyle, and commercial
           projects. I bring versatility, professionalism, and a strong visual presence
           to every collaboration.
@@ -133,10 +133,9 @@ export default function HeroBanner({ item }: { item: MediaItem | null }) {
         </div>
       </div>
 
-      {/* MOBILE/TABLET: solo palabras debajo de MALENA + acordeón "Sobre mí" */}
-      <div className="absolute inset-x-0 top-[124px] sm:top-[148px] z-30 px-6 lg:hidden">
+      {/* MOBILE/TABLET menú */}
+      <div className="absolute inset-x-0 top-[124px] sm:top-[148px] z-20 px-6 lg:hidden">
         <div className="mx-auto max-w-[520px] text-center">
-          {/* “menú” de palabras */}
           <div className="flex items-center justify-center gap-4 text-sm text-white/85">
             <a href="#projects" className="hover:text-white transition">
               Proyectos
@@ -156,7 +155,6 @@ export default function HeroBanner({ item }: { item: MediaItem | null }) {
             </button>
           </div>
 
-          {/* panel que aparece debajo */}
           <div
             className={[
               "grid transition-all duration-300 ease-out",
