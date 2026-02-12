@@ -142,8 +142,14 @@ function MediaThumb({
         className={cn(
           "absolute inset-0 h-full w-full object-cover",
           "transition duration-300 will-change-transform",
-          "filter grayscale contrast-125 brightness-90",
-          "group-hover:grayscale-0 group-hover:brightness-100",
+
+          // ✅ MOBILE: siempre a color (no hay hover)
+          "filter brightness-95",
+
+          // ✅ DESKTOP: arranca gris y se colorea en hover
+          "md:grayscale md:contrast-125 md:brightness-90",
+          "md:group-hover:grayscale-0 md:group-hover:brightness-100",
+
           "group-hover:scale-[1.03]"
         )}
         loading="lazy"
@@ -171,7 +177,7 @@ function MediaThumb({
           preload="auto"
           className={cn(
             "absolute inset-0 h-full w-full object-cover",
-            "opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            "opacity-0 md:group-hover:opacity-100 transition-opacity duration-200"
           )}
         />
       )}
@@ -185,8 +191,8 @@ function MediaThumb({
               "grid place-items-center",
               "border border-white/20",
               "transition-all duration-200",
-              "opacity-0 group-hover:opacity-100",
-              "group-hover:scale-105"
+              "opacity-0 md:group-hover:opacity-100",
+              "md:group-hover:scale-105"
             )}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -259,13 +265,12 @@ function ProjectModal({
       alive = false;
     };
   }, [open, album]);
+
   // ✅ Bloquear scroll del background mientras el modal está abierto
   useEffect(() => {
     if (!open) return;
-
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-
     return () => {
       document.body.style.overflow = prev;
     };
@@ -296,21 +301,28 @@ function ProjectModal({
       />
 
       <div className="absolute inset-0 flex items-center justify-center p-4">
-     <div
-  className={cn(
-    "relative w-full max-w-6xl",
-    "rounded-2xl border border-white/10 bg-black",
-    "shadow-2xl",
-    "max-h-[86vh] overflow-hidden",
-    "flex flex-col" // ✅ para separar header/body
-  )}
->
-
+        <div
+          className={cn(
+            "relative w-full max-w-6xl",
+            "rounded-2xl border border-white/10 bg-black",
+            "shadow-2xl",
+            "max-h-[86vh] overflow-hidden",
+            "flex flex-col"
+          )}
+        >
           <div className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
             <div>
-              {/* <div className="text-xs tracking-widest text-white/40 uppercase">Project</div> */}
-              <div style={{ fontFamily: "var(--font-battle)", fontSize: "3rem" }} className="mt-1 text-2xl font-semibold text-white">{title}</div>
-              {description ? <div style={{ fontSize: "1.3rem" }} className="mt-2 text-sm text-white/70">{description}</div> : null}
+              <div
+                style={{ fontFamily: "var(--font-battle)", fontSize: "3rem" }}
+                className="mt-1 text-2xl font-semibold text-white"
+              >
+                {title}
+              </div>
+              {description ? (
+                <div style={{ fontSize: "1.3rem" }} className="mt-2 text-sm text-white/70">
+                  {description}
+                </div>
+              ) : null}
             </div>
 
             <button
@@ -323,7 +335,6 @@ function ProjectModal({
           </div>
 
           <div className="px-6 py-5 overflow-y-auto">
-
             {err && (
               <div className="mb-4 rounded-2xl border border-red-200/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
                 {err}
@@ -394,8 +405,12 @@ function ProjectModal({
                         alt="thumb"
                         className={cn(
                           "absolute inset-0 h-full w-full object-cover",
-                          "filter grayscale contrast-125 brightness-90",
-                          "hover:grayscale-0 hover:brightness-100 transition"
+
+                          // ✅ miniaturas: color en mobile, hover solo desktop
+                          "filter brightness-95",
+                          "md:grayscale md:contrast-125 md:brightness-90",
+                          "md:hover:grayscale-0 md:hover:brightness-100",
+                          "transition"
                         )}
                         loading="lazy"
                       />
@@ -421,13 +436,15 @@ function ProjectCard({
   group,
   index,
   onOpen,
+  isRedMobile,
+  isRedDesktop,
 }: {
   group: ProjectApiGroup;
   index: number;
   onOpen: (g: ProjectApiGroup) => void;
+  isRedMobile: boolean;
+  isRedDesktop: boolean;
 }) {
-  const isFirst = index === 0;
-  const bg = isFirst ? "bg-[#C81D25]" : "bg-black";
   const title = group.name || group.album || "Proyecto";
   const desc = group.description || "";
   const count = group.count || 1;
@@ -450,22 +467,24 @@ function ProjectCard({
   const MEDIA_H = "h-[320px] md:h-[340px]";
 
   return (
-   <article
-  className={cn(
-    "rounded-[0px] overflow-hidden",
-    "border border-white/25 ring-2 ring-white/15 ring-inset",
+    <article
+      className={cn(
+        "rounded-[0px] overflow-hidden",
+        "border border-white/25 ring-2 ring-white/15 ring-inset",
+        "ring-2 ring-white/10",
+        "ring-inset",
 
-    "ring-2 ring-white/10",        // 👈 engorda visual
-    "ring-inset",                  // 👈 que sea hacia adentro
-    bg,
-    "p-6 md:p-8"
-  )}
->
+        // ✅ Alternancia: mobile y desktop por separado
+        isRedMobile ? "bg-[#C81D25]" : "bg-black",
+        isRedDesktop ? "md:bg-[#C81D25]" : "md:bg-black",
+
+        "p-6 md:p-8"
+      )}
+    >
       <div className="grid items-start gap-6 md:grid-cols-12">
         {/* TEXTO */}
         <div className="md:col-span-5 flex flex-col h-full">
           <div className="relative mt-2">
-            {/* ✅ OUTLINE: ocupa el ancho pero NO genera overflow horizontal */}
             <div
               aria-hidden
               style={{ fontFamily: "var(--font-outline)" }}
@@ -484,12 +503,19 @@ function ProjectCard({
             </div>
 
             <div className="relative pt-10">
-              <div style={{ fontFamily: "var(--font-battle)" }} className="text-4xl md:text-5xl  text-white">{title}</div>
+              <div style={{ fontFamily: "var(--font-battle)" }} className="text-4xl md:text-5xl text-white">
+                {title}
+              </div>
             </div>
           </div>
 
           {desc ? (
-            <p style={{ fontFamily: "var(--font-nunito)" }}  className="mt-3 text-white/75 leading-relaxed text-2xl md:text-xl ">{desc}</p>
+            <p
+              style={{ fontFamily: "var(--font-nunito)" }}
+              className="mt-3 text-white/75 leading-relaxed text-2xl md:text-xl"
+            >
+              {desc}
+            </p>
           ) : (
             <p className="mt-3 text-white/55 leading-relaxed">Proyecto sin descripción.</p>
           )}
@@ -551,7 +577,7 @@ function ProjectCard({
                 className={cn(
                   "relative h-full",
                   "grid gap-1",
-                  "pb-px", // ✅ FIX: evita micro-corte abajo
+                  "pb-px",
                   stackVertical ? "grid-cols-1 grid-rows-2" : "grid-cols-2"
                 )}
               >
@@ -598,13 +624,9 @@ export default function ProjectsSection({
 }) {
   const initialOk = initial && (initial as any).ok;
 
-  const [groups, setGroups] = useState<ProjectApiGroup[]>(
-    initialOk ? (initial as any).projects || [] : []
-  );
+  const [groups, setGroups] = useState<ProjectApiGroup[]>(initialOk ? (initial as any).projects || [] : []);
   const [page, setPage] = useState<number>(initialOk ? (initial as any).page || 1 : 1);
-  const [totalPages, setTotalPages] = useState<number>(
-    initialOk ? (initial as any).totalPages || 1 : 1
-  );
+  const [totalPages, setTotalPages] = useState<number>(initialOk ? (initial as any).totalPages || 1 : 1);
 
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(
@@ -677,9 +699,26 @@ export default function ProjectsSection({
       )}
 
       <div className="grid gap-6 md:grid-cols-2">
-        {groups.map((g, i) => (
-          <ProjectCard key={g.album} group={g} index={i} onOpen={openModal} />
-        ))}
+        {groups.map((g, i) => {
+          // ✅ MOBILE: rojo/negro alternado (0 rojo, 1 negro, 2 rojo...)
+          const isRedMobile = i % 2 === 0;
+
+          // ✅ DESKTOP (2 cols): patrón por fila
+          const row = Math.floor(i / 2);
+          const col = i % 2; // 0 izq, 1 der
+          const isRedDesktop = row % 2 === 0 ? col === 0 : col === 1;
+
+          return (
+            <ProjectCard
+              key={g.album}
+              group={g}
+              index={i}
+              onOpen={openModal}
+              isRedMobile={isRedMobile}
+              isRedDesktop={isRedDesktop}
+            />
+          );
+        })}
       </div>
 
       {canLoadMore && (

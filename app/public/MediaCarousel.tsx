@@ -135,16 +135,17 @@ export default function MediaCarousel({
             </button>
 
             {/* sombra suave (apoyo) */}
-            <div
-              className="
-                pointer-events-none
-                absolute left-1/2 -translate-x-1/2
-                -bottom-2
-                h-10 w-[75%]
-                rounded-full
-                bg-black/35 blur-2xl
-              "
-            />
+           <div
+  className="
+    pointer-events-none
+    absolute left-1/2 -translate-x-1/2
+    -bottom-2
+    h-10 w-[75%]
+    rounded-full
+    bg-black/35 blur-2xl
+    z-0
+  "
+/>
           </div>
         </div>
       ) : null}
