@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from "react";
 
 type FooterItem = {
   _id?: string;
@@ -21,7 +21,7 @@ export default function FooterSection({
   tiktokUrl,
   youtubeUrl,
 }: {
-  items: FooterItem[]; // 👈 ahora array
+  items: FooterItem[];
   phone: string;
   instagramUrl: string;
   tiktokUrl: string;
@@ -32,7 +32,7 @@ export default function FooterSection({
   return (
     <footer className="relative mt-24 border-t border-white/10 bg-black">
       <div className="mx-auto max-w-6xl px-6 py-16">
-        <div className="grid gap-10 md:grid-cols-12 items-center">
+        <div className="grid items-center gap-10 md:grid-cols-12">
           {/* IZQUIERDA – STACK DE POLAROIDS */}
           <div className="md:col-span-5 flex justify-center md:justify-start">
             {stack.length > 0 ? (
@@ -50,17 +50,21 @@ export default function FooterSection({
               Contacto
             </p>
 
-            <h3 style={{display:"flex", alignItems:"center", gap:"1rem"}} className="text-[20px] sm:text-[35px] mt-2 text-2xl  font-semibold">
-              ¿Querés comunicarte con           <div
-          style={{ fontFamily: "var(--font-thirstycaps)", fontWeight:400 }}
-          className="text-[55px] sm:text-[75px] leading-none italic text-red-600"
-        >
-          Malena
-        </div>
-        ?
+            <h3
+              className="mt-2 text-[20px] font-semibold sm:text-[35px]"
+              style={{ display: "flex", alignItems: "center", gap: "1rem" }}
+            >
+              ¿Querés comunicarte con{" "}
+              <span
+                style={{ fontFamily: "var(--font-thirstycaps)", fontWeight: 400 }}
+                className="text-[55px] leading-none italic text-red-600 sm:text-[75px]"
+              >
+                Malena
+              </span>
+              ?
             </h3>
 
-            <p className="mt-4 text-white/70 max-w-xl">
+            <p className="mt-4 max-w-xl text-white/70">
               Por tratarse de una artista menor de edad, el contacto se realiza
               exclusivamente a través de un adulto responsable.
             </p>
@@ -106,9 +110,12 @@ export default function FooterSection({
 function PolaroidStack({ items }: { items: FooterItem[] }) {
   const [active, setActive] = useState(0);
 
+  // drag state (solo para la card activa)
+  const [drag, setDrag] = useState({ x: 0, y: 0, dragging: false });
+
   const stack = useMemo(() => (items || []).slice(0, 4), [items]);
 
-  // ✅ presets “encimados” (suaves)
+  // presets encimados
   const presets = [
     { r: -7, x: -45, y: 6 },
     { r: 6, x: 30, y: -16 },
@@ -116,34 +123,90 @@ function PolaroidStack({ items }: { items: FooterItem[] }) {
     { r: 9, x: 78, y: 22 },
   ];
 
+  const ptr = useRef<{ id: number | null; sx: number; sy: number }>({
+    id: null,
+    sx: 0,
+    sy: 0,
+  });
+
+  const clampIndex = (idx: number) => {
+    const n = stack.length || 1;
+    return ((idx % n) + n) % n;
+  };
+
+  const onPointerDownTop = (e: React.PointerEvent<HTMLDivElement>) => {
+    ptr.current.id = e.pointerId;
+    ptr.current.sx = e.clientX;
+    ptr.current.sy = e.clientY;
+
+    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+
+    setDrag({ x: 0, y: 0, dragging: true });
+  };
+
+  const onPointerMoveTop = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (ptr.current.id !== e.pointerId) return;
+
+    const dx = e.clientX - ptr.current.sx;
+    const dy = e.clientY - ptr.current.sy;
+
+    setDrag({ x: dx, y: dy, dragging: true });
+  };
+
+  const onPointerUpTop = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (ptr.current.id !== e.pointerId) return;
+
+    const TH = 55; // umbral swipe
+
+    const dx = drag.x;
+    const dy = drag.y;
+
+    if (Math.abs(dx) > TH && Math.abs(dx) > Math.abs(dy)) {
+      setActive((prev) => clampIndex(dx < 0 ? prev + 1 : prev - 1));
+    }
+
+    setDrag({ x: 0, y: 0, dragging: false });
+    ptr.current.id = null;
+  };
+
   return (
     <div className="relative h-[320px] w-[300px] sm:h-[340px] sm:w-[320px] md:h-[360px] md:w-[340px]">
       {stack.map((it, i) => {
         const p = presets[i] || presets[0];
         const isActive = i === active;
 
+        const extraX = isActive ? drag.x : 0;
+        const extraY = isActive ? drag.y : 0;
+        const extraR = isActive ? Math.max(-12, Math.min(12, drag.x / 12)) : 0;
+
         return (
           <div
             key={it._id || it.url || i}
             className={[
               "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
-              // z-index dinámico: el activo arriba, los demás por orden
               isActive ? "z-[50]" : `z-[${10 + i}]`,
             ].join(" ")}
           >
-            {/* ✅ Este wrapper mantiene el “layout” centrado.
-                Acá aplicamos la pose base (rotate/translate). */}
             <div
-              className="transition-transform duration-300"
+              className={cn(
+                "transition-transform",
+                isActive && drag.dragging ? "" : "duration-300"
+              )}
               style={{
-                transform: `translate(${p.x}px, ${p.y}px) rotate(${p.r}deg)`,
+                transform: `translate(${p.x + extraX}px, ${p.y + extraY}px) rotate(${p.r + extraR}deg)`,
+                touchAction: isActive ? "pan-y" : "auto",
               }}
+              onPointerDown={isActive ? onPointerDownTop : undefined}
+              onPointerMove={isActive ? onPointerMoveTop : undefined}
+              onPointerUp={isActive ? onPointerUpTop : undefined}
+              onPointerCancel={isActive ? onPointerUpTop : undefined}
             >
               <PolaroidCard
                 src={it.url}
                 caption={it.title}
                 active={isActive}
                 onClick={() => setActive(i)}
+                hintSwipe={stack.length > 1}
               />
             </div>
           </div>
@@ -152,52 +215,61 @@ function PolaroidStack({ items }: { items: FooterItem[] }) {
     </div>
   );
 }
+
 function PolaroidCard({
   src,
   caption,
   active,
   onClick,
+  hintSwipe,
 }: {
   src: string;
   caption?: string;
   active?: boolean;
   onClick?: () => void;
+  hintSwipe?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={[
-        "group relative bg-white rounded-2xl p-3 shadow-2xl",
+        "group relative rounded-2xl bg-white p-3 shadow-2xl",
         "w-[210px] sm:w-[220px] md:w-[230px]",
         "text-left cursor-pointer",
         "transition-transform duration-200",
-        // hover sutil en desktop
         "hover:scale-[1.02]",
-        // ✅ cuando está activa: sube “visual” y resalta
         active ? "scale-[1.06] ring-2 ring-[#C81D25]/50" : "ring-0",
       ].join(" ")}
       aria-label="Polaroid"
     >
       <div className="overflow-hidden rounded-xl bg-black">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
           alt={caption || "polaroid"}
           className="h-[220px] w-full object-cover"
           loading="lazy"
+          draggable={false}
         />
       </div>
 
-      <div className="pt-3 text-center text-xs text-gray-500">
-        {caption || "Footer"}
+      <div className="pt-8 text-center text-xs text-gray-500">
+        {/* {caption || "Footer"} */}
       </div>
 
-      {/* tape opcional (queda lindo, no molesta) */}
-      <div className="pointer-events-none absolute -top-2 left-1/2 h-6 w-20 -translate-x-1/2 rotate-[-2deg] rounded-md bg-black/10 opacity-0 group-hover:opacity-100 transition" />
+      {/* tape */}
+      <div className="pointer-events-none absolute -top-2 left-1/2 h-6 w-20 -translate-x-1/2 rotate-[-2deg] rounded-md bg-black/10 opacity-0 transition group-hover:opacity-100" />
+
+      {/* hint */}
+      {active && hintSwipe && (
+        <div className="pointer-events-none absolute -bottom-3 left-1/2 -translate-x-1/2 text-[10px] text-black/40">
+          Deslizá ↔
+        </div>
+      )}
     </button>
   );
 }
+
 /* ------------------ Social ------------------ */
 
 function SocialIcon({
@@ -218,12 +290,10 @@ function SocialIcon({
       rel="noreferrer"
       aria-label={label}
       className="
-        h-11 w-11 rounded-full
-        border border-white/15
+        grid h-11 w-11 place-items-center
+        rounded-full border border-white/15
         bg-white/5
-        grid place-items-center
-        hover:bg-white/10
-        transition
+        transition hover:bg-white/10
       "
       title={label}
     >
@@ -237,7 +307,15 @@ function SocialIcon({
 function InstagramIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <rect x="3" y="3" width="18" height="18" rx="5" stroke="white" strokeWidth="1.6" />
+      <rect
+        x="3"
+        y="3"
+        width="18"
+        height="18"
+        rx="5"
+        stroke="white"
+        strokeWidth="1.6"
+      />
       <circle cx="12" cy="12" r="4" stroke="white" strokeWidth="1.6" />
       <circle cx="17.5" cy="6.5" r="0.8" fill="white" />
     </svg>
