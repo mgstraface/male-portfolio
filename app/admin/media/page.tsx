@@ -47,17 +47,9 @@ type MediaItem = {
   createdAt?: string;
 };
 
-type CategoriesResponse =
-  | { ok: true; categories: Category[] }
-  | { ok: false; error: string };
-
-type MediaListResponse =
-  | { ok: true; items: MediaItem[] }
-  | { ok: false; error: string };
-
-type MediaOneResponse =
-  | { ok: true; item: MediaItem }
-  | { ok: false; error: string };
+type CategoriesResponse = { ok: true; categories: Category[] } | { ok: false; error: string };
+type MediaListResponse = { ok: true; items: MediaItem[] } | { ok: false; error: string };
+type MediaOneResponse = { ok: true; item: MediaItem } | { ok: false; error: string };
 
 export default function AdminMediaPage() {
   const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
@@ -273,9 +265,6 @@ export default function AdminMediaPage() {
             fullVideoUrl: type === "video" ? (fullVideoUrl.trim() || undefined) : undefined,
           };
 
-          // debug rápido (si querés ver qué manda)
-          // console.log("POST /api/media payload:", payload);
-
           const res = await fetch("/api/media", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -305,10 +294,101 @@ export default function AdminMediaPage() {
     }
   };
 
-  const deleteMedia = async (id: string) => {
-    const ok = confirm("¿Borrar este item de media? (DB + Cloudinary)");
+  // ✅ NUEVO: delete album entero (Projects)
+  const deleteAlbum = async (albumName: string) => {
+    const ok = confirm(`¿Borrar el ALBUM COMPLETO "${albumName}"?\nEsto elimina TODO (DB + Cloudinary).`);
     if (!ok) return;
 
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/media/projects/${encodeURIComponent(albumName)}/delete`, {
+        method: "DELETE",
+      });
+      const data = (await res.json()) as { ok: boolean; error?: string; deleted?: number };
+
+      if (!res.ok || !data.ok) {
+        setError(data.error || "Error al borrar álbum");
+        return;
+      }
+
+      // sacamos del estado todos los items de ese album (solo Projects, por seguridad)
+      setItems((prev) =>
+        prev.filter((x) => {
+          const catName = typeof x.category === "string" ? "" : ((x.category as any)?.name ?? "");
+          const isProj = catName.toLowerCase().trim() === "projects" || catName.toLowerCase().trim() === "project";
+          if (!isProj) return true;
+          return (x.album || "") !== albumName;
+        })
+      );
+    } catch {
+      setError("Error de red al borrar álbum");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteMedia = async (mOrId: string | MediaItem) => {
+    const m = typeof mOrId === "string" ? items.find((x) => x._id === mOrId) : mOrId;
+    const id = typeof mOrId === "string" ? mOrId : mOrId._id;
+
+    // fallback si no encontramos el item
+    if (!m) {
+      const ok = confirm("¿Borrar este item de media? (DB + Cloudinary)");
+      if (!ok) return;
+
+      setSaving(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/media/${id}`, { method: "DELETE" });
+        const data = (await res.json()) as { ok: boolean; error?: string };
+
+        if (!res.ok || !data.ok) {
+          setError(data.error || "Error al borrar");
+          return;
+        }
+
+        setItems((prev) => prev.filter((x) => x._id !== id));
+      } catch {
+        setError("Error de red al borrar");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    const catName = typeof m.category === "string" ? m.category : ((m.category as any)?.name ?? "");
+    const thisIsProjects =
+      catName.toLowerCase().trim() === "projects" || catName.toLowerCase().trim() === "project";
+
+    const hasAlbum = thisIsProjects && !!m.album?.trim();
+
+    // ✅ Si es Projects + tiene album => elegir acción
+    if (hasAlbum) {
+      const choice = prompt(
+        `Este item pertenece al álbum: "${m.album}".\n\n` +
+          `Escribí:\n` +
+          `  1 = Borrar SOLO este item\n` +
+          `  2 = Borrar ALBUM COMPLETO\n\n` +
+          `Cancelar = no borrar`,
+        "1"
+      );
+
+      if (!choice) return;
+
+      if (choice.trim() === "2") {
+        await deleteAlbum(m.album!.trim());
+        return;
+      }
+
+      if (choice.trim() !== "1") return;
+      // si es 1 sigue y borra item
+    } else {
+      const ok = confirm("¿Borrar este item de media? (DB + Cloudinary)");
+      if (!ok) return;
+    }
+
+    // ✅ borrar SOLO item
     setSaving(true);
     setError(null);
     try {
@@ -361,10 +441,8 @@ export default function AdminMediaPage() {
       return;
     }
 
-    // detect category name for this item (para decidir si manda name/description/album)
     const current = items.find((x) => x._id === id);
-    const currentCatName =
-      current && typeof current.category !== "string" ? (current.category?.name ?? "") : "";
+    const currentCatName = current && typeof current.category !== "string" ? (current.category?.name ?? "") : "";
     const currentIsProjects =
       (currentCatName || "").toLowerCase().trim() === "projects" ||
       (currentCatName || "").toLowerCase().trim() === "project";
@@ -372,7 +450,8 @@ export default function AdminMediaPage() {
     if (currentIsProjects) {
       if (!editAlbum.trim()) return setError("Para Projects, el Album no puede estar vacío");
       if (!editName.trim()) return setError("Para Projects, el Name no puede estar vacío");
-      if (!editDescription.trim()) return setError("Para Projects, la Description no puede estar vacía");
+      if (!editDescription.trim())
+        return setError("Para Projects, la Description no puede estar vacía");
     }
 
     setSaving(true);
@@ -384,7 +463,7 @@ export default function AdminMediaPage() {
           // legacy
           title: editTitle.trim(),
 
-          // ✅ projects (solo si es projects; vacío => null lo resuelve el backend)
+          // ✅ projects
           album: currentIsProjects ? editAlbum.trim() : undefined,
           name: currentIsProjects ? editName.trim() : undefined,
           description: currentIsProjects ? editDescription.trim() : undefined,
@@ -568,8 +647,7 @@ export default function AdminMediaPage() {
                   placeholder="Ej: sesion1 / boda-abril / editorial-2026..."
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  Tip: usá un nombre consistente:{" "}
-                  <span className="font-mono">boda-abril-2026</span>
+                  Tip: usá un nombre consistente: <span className="font-mono">boda-abril-2026</span>
                 </p>
               </div>
 
@@ -635,9 +713,7 @@ export default function AdminMediaPage() {
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {uploads.map((u) => (
                 <div key={u.publicId} className="rounded-xl border bg-white p-2">
-                  <div className="text-xs text-gray-500 truncate">
-                    {u.originalFilename || u.publicId}
-                  </div>
+                  <div className="text-xs text-gray-500 truncate">{u.originalFilename || u.publicId}</div>
                   <div className="mt-2 overflow-hidden rounded-lg border bg-gray-50">
                     {u.resourceType === "image" ? (
                       <img src={u.url} alt="preview" className="h-40 w-full object-cover" />
@@ -726,11 +802,9 @@ export default function AdminMediaPage() {
         ) : (
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredItems.map((m) => {
-              const catName =
-                typeof m.category === "string" ? m.category : ((m.category as any)?.name ?? "-");
+              const catName = typeof m.category === "string" ? m.category : ((m.category as any)?.name ?? "-");
               const isEditing = editingId === m._id;
-              const thisIsProjects =
-                catName.toLowerCase().trim() === "projects" || catName.toLowerCase().trim() === "project";
+              const thisIsProjects = catName.toLowerCase().trim() === "projects" || catName.toLowerCase().trim() === "project";
 
               return (
                 <div key={m._id} className="rounded-2xl border bg-white p-3">
@@ -790,32 +864,21 @@ export default function AdminMediaPage() {
 
                   <div className="mt-3 overflow-hidden rounded-xl border bg-gray-50">
                     {m.type === "photo" ? (
-                      <img
-                        src={m.url}
-                        alt={m.title || m.name || "media"}
-                        className="h-48 w-full object-cover"
-                      />
+                      <img src={m.url} alt={m.title || m.name || "media"} className="h-48 w-full object-cover" />
                     ) : (
                       <video src={m.url} controls className="h-48 w-full object-cover" />
                     )}
                   </div>
 
                   {m.type === "video" && !isEditing && m.fullVideoUrl && (
-                    <a
-                      className="mt-2 block text-sm text-blue-600 hover:underline"
-                      href={m.fullVideoUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
+                    <a className="mt-2 block text-sm text-blue-600 hover:underline" href={m.fullVideoUrl} target="_blank" rel="noreferrer">
                       Ver video completo
                     </a>
                   )}
 
                   {m.type === "video" && isEditing && (
                     <div className="mt-2">
-                      <label className="text-xs text-gray-600">
-                        {thisIsProjects ? "Link externo (Ver proyecto)" : "Link video completo"}
-                      </label>
+                      <label className="text-xs text-gray-600">{thisIsProjects ? "Link externo (Ver proyecto)" : "Link video completo"}</label>
                       <input
                         value={editFullVideoUrl}
                         onChange={(e) => setEditFullVideoUrl(e.target.value)}
@@ -830,11 +893,7 @@ export default function AdminMediaPage() {
                       <span className="text-xs text-gray-600">{m.isFeatured ? "⭐ Destacado" : ""}</span>
                     ) : (
                       <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={editFeatured}
-                          onChange={(e) => setEditFeatured(e.target.checked)}
-                        />
+                        <input type="checkbox" checked={editFeatured} onChange={(e) => setEditFeatured(e.target.checked)} />
                         Destacado
                       </label>
                     )}
@@ -850,7 +909,7 @@ export default function AdminMediaPage() {
                             Editar
                           </button>
                           <button
-                            onClick={() => void deleteMedia(m._id)}
+                            onClick={() => void deleteMedia(m)}
                             disabled={saving}
                             className="rounded-lg border px-2 py-1 text-sm hover:bg-gray-100 disabled:opacity-50"
                           >

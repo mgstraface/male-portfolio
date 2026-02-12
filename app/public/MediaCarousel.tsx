@@ -74,16 +74,20 @@ export default function MediaCarousel({
   const canOpenBio = Boolean(trainingIntro) || (trainingItems?.length ?? 0) > 0;
 
   return (
-  <section
+<section
   id="galeria"
   className="
-    relative isolate z-10
+    relative z-[60]
+    overflow-visible
     rounded-1xl border border-white/10
     p-5 shadow-2xl
+
+    /* ✅ esto hace que el carousel “suba” y pueda solaparse con el hero */
+    -mt-10 sm:-mt-14 md:-mt-16 lg:mt-0
   "
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
+  onMouseEnter={() => setPaused(true)}
+  onMouseLeave={() => setPaused(false)}
+>
       {/* ✅ Overlay “sentada” (X como lo tenías antes: calc(-50% + var(--sx))) */}
       {sitting?.url ? (
         <div
