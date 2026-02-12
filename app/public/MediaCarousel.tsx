@@ -74,13 +74,13 @@ export default function MediaCarousel({
   const canOpenBio = Boolean(trainingIntro) || (trainingItems?.length ?? 0) > 0;
 
   return (
-    <section
-      id="galeria"
-      className="
-        relative
-        rounded-1xl border border-white/10
-        p-5 shadow-2xl
-      "
+  <section
+  id="galeria"
+  className="
+    relative isolate z-10
+    rounded-1xl border border-white/10
+    p-5 shadow-2xl
+  "
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -88,7 +88,7 @@ export default function MediaCarousel({
       {sitting?.url ? (
         <div
           aria-hidden="true"
-          className="absolute right-0 top-0 z-30 pointer-events-none"
+          className="absolute right-0 top-0 z-10 pointer-events-none"
           style={
             {
               ["--sx" as any]: "55px", // mobile
