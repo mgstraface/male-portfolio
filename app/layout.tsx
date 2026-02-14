@@ -71,6 +71,7 @@ const thirstyCaps = localFont({
   display: "swap",
 });
 
+
 export const metadata: Metadata = {
   title: "Male Straface",
   description: "Portfolio Malena Straface - Dancer, Model & Audiovisual Creator",
