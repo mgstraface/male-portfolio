@@ -77,6 +77,7 @@ export const metadata: Metadata = {
   description: "Portfolio Malena Straface - Dancer, Model & Audiovisual Creator",
 };
 
+
 export default function RootLayout({
   children,
 }: Readonly<{
