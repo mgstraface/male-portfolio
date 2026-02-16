@@ -142,12 +142,15 @@ export default async function HomePage() {
           subtitle="Una selección de fotos destacadas"
           items={carousel}
           sitting={sitting}
-          trainingTitle="Formación"
-          trainingIntro="Bailarina y coreógrafa. Estudios y experiencias:"
+          trainingTitle="Formación académica"
+          trainingIntro="Cursos"
           trainingItems={[
-            "Estudio 1 – Contemporáneo (2019–2021)",
-            "Estudio 2 – Urbano / Heels (2021–2023)",
-            "Workshops: X, Y, Z",
+            "Introducción a la programación - [2022-2023]",
+            "Construct - [2023-2024]",
+            "Unreal Engine - [2023-2025]",
+            "Desarrollo web - [2025]",
+            "Contenidos audiovisuales - [2025-2026]",
+            "Inglés - B1"
           ]}
         />
 
@@ -155,12 +158,15 @@ export default async function HomePage() {
 
         <ContactSection
           sittingContact={sittingContact}
-          trainingTitle="Formación"
+          trainingTitle="Formación artística"
           trainingIntro="Estudios y experiencias:"
           trainingItems={[
-            "Estudio X – Contemporáneo",
-            "Estudio Y – Urbano / Heels",
-            "Workshops: ...",
+            "Academia: Y si bailamos - [2014-2023]",
+            "Grupo competencia Impacto Crew, Academia Estilo Urbano - [2023-ACTUALIDAD]",
+            "Competencia 3.3 Rosario [2023]",
+            "Universal Dance, San Lorenzo, Brasil, Mexico [2024-2026]",
+            "Workshops instituto CDF, Rosario [Valentina Toranzo, Mati Napp, Sol Alonso, Edson SJ, Yabil Recamier, Milu Aldas, Pecas Conte]",
+            "Instructorado street dance academia Street Beat [2025]",
           ]}
         />
       </div>

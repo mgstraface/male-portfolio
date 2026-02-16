@@ -112,9 +112,7 @@ export default function HeroBanner({ item }: { item: MediaItem | null }) {
           style={{ fontFamily: "var(--font-nunito)" }}
           className="mt-3 text-sm leading-relaxed text-white/80"
         >
-          I am a freelance model with experience in creative, lifestyle, and commercial
-          projects. I bring versatility, professionalism, and a strong visual presence
-          to every collaboration.
+          Creadora visual e instructora de street dance, con experiencia en proyectos creativos y comerciales, integrando narrativa, versatilidad y una identidad estética, sólida en cada colaboración.
         </p>
 
         <div className="mt-6 flex justify-end gap-3">
@@ -163,9 +161,7 @@ export default function HeroBanner({ item }: { item: MediaItem | null }) {
           >
             <div className="overflow-hidden">
               <div className="mx-auto max-w-[420px] rounded-1xl border border-white/15 bg-black/35 px-4 py-4 text-sm leading-relaxed text-white/85 backdrop-blur-sm">
-                I am a freelance model with experience in creative, lifestyle, and commercial
-                projects. I bring versatility, professionalism, and a strong visual presence
-                to every collaboration.
+               Creadora visual e instructora de street dance, con experiencia en proyectos creativos y comerciales, integrando narrativa, versatilidad y una identidad estética, sólida en cada colaboración.
               </div>
             </div>
           </div>
