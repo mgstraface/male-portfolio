@@ -166,7 +166,7 @@ export default async function HomePage() {
             "Competencia 3.3 Rosario [2023]",
             "Universal Dance, San Lorenzo, Brasil, Mexico [2024-2026]",
             "Workshops instituto CDF, Rosario [Valentina Toranzo, Mati Napp, Sol Alonso, Edson SJ, Yabil Recamier, Milu Aldas, Pecas Conte]",
-            "Instructorado street dance academia Street Beat [2025]",
+            "Instructorado Street Dance academia Street Beat [2025]",
           ]}
         />
       </div>
