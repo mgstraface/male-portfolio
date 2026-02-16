@@ -36,6 +36,9 @@ type MediaItem = {
   name?: string;
   description?: string;
 
+  // ✅ NEW
+  esPortada?: boolean;
+
   type: "photo" | "video";
   category: Category | string;
   url: string;
@@ -66,7 +69,7 @@ export default function AdminMediaPage() {
   const [type, setType] = useState<"photo" | "video">("photo");
   const [categoryId, setCategoryId] = useState<string>("");
 
-  // legacy title (se sigue usando para todo lo que NO sea projects)
+  // legacy title
   const [title, setTitle] = useState("");
 
   // ✅ projects fields
@@ -76,6 +79,9 @@ export default function AdminMediaPage() {
 
   const [isFeatured, setIsFeatured] = useState(false);
   const [fullVideoUrl, setFullVideoUrl] = useState("");
+
+  // ✅ NEW
+  const [esPortada, setEsPortada] = useState(false);
 
   // multiple uploads
   const [uploads, setUploads] = useState<UploadItem[]>([]);
@@ -91,6 +97,9 @@ export default function AdminMediaPage() {
 
   const [editFeatured, setEditFeatured] = useState(false);
   const [editFullVideoUrl, setEditFullVideoUrl] = useState("");
+
+  // ✅ NEW
+  const [editEsPortada, setEditEsPortada] = useState(false);
 
   // ✅ FILTERS
   const [q, setQ] = useState("");
@@ -167,6 +176,8 @@ export default function AdminMediaPage() {
     setAlbum("");
     setName("");
     setDescription("");
+    setIsFeatured(false);
+    setEsPortada(false);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
@@ -250,10 +261,13 @@ export default function AdminMediaPage() {
             // legacy
             title: title.trim() || u.originalFilename || "",
 
-            // ✅ projects (BLINDADO: mandamos album siempre si está)
+            // ✅ projects
             album: album.trim() || undefined,
             name: isProjectsCategory ? name.trim() : undefined,
             description: isProjectsCategory ? description.trim() : undefined,
+
+            // ✅ NEW
+            esPortada: isProjectsCategory ? esPortada : undefined,
 
             type,
             category: categoryId,
@@ -285,6 +299,7 @@ export default function AdminMediaPage() {
       setName("");
       setDescription("");
       setIsFeatured(false);
+      setEsPortada(false);
       setFullVideoUrl("");
       resetUploads();
     } catch (e: unknown) {
@@ -294,7 +309,6 @@ export default function AdminMediaPage() {
     }
   };
 
-  // ✅ NUEVO: delete album entero (Projects)
   const deleteAlbum = async (albumName: string) => {
     const ok = confirm(`¿Borrar el ALBUM COMPLETO "${albumName}"?\nEsto elimina TODO (DB + Cloudinary).`);
     if (!ok) return;
@@ -312,7 +326,6 @@ export default function AdminMediaPage() {
         return;
       }
 
-      // sacamos del estado todos los items de ese album (solo Projects, por seguridad)
       setItems((prev) =>
         prev.filter((x) => {
           const catName = typeof x.category === "string" ? "" : ((x.category as any)?.name ?? "");
@@ -332,7 +345,6 @@ export default function AdminMediaPage() {
     const m = typeof mOrId === "string" ? items.find((x) => x._id === mOrId) : mOrId;
     const id = typeof mOrId === "string" ? mOrId : mOrId._id;
 
-    // fallback si no encontramos el item
     if (!m) {
       const ok = confirm("¿Borrar este item de media? (DB + Cloudinary)");
       if (!ok) return;
@@ -363,7 +375,6 @@ export default function AdminMediaPage() {
 
     const hasAlbum = thisIsProjects && !!m.album?.trim();
 
-    // ✅ Si es Projects + tiene album => elegir acción
     if (hasAlbum) {
       const choice = prompt(
         `Este item pertenece al álbum: "${m.album}".\n\n` +
@@ -382,13 +393,11 @@ export default function AdminMediaPage() {
       }
 
       if (choice.trim() !== "1") return;
-      // si es 1 sigue y borra item
     } else {
       const ok = confirm("¿Borrar este item de media? (DB + Cloudinary)");
       if (!ok) return;
     }
 
-    // ✅ borrar SOLO item
     setSaving(true);
     setError(null);
     try {
@@ -421,6 +430,9 @@ export default function AdminMediaPage() {
 
     setEditFeatured(!!m.isFeatured);
     setEditFullVideoUrl(m.fullVideoUrl || "");
+
+    // ✅ NEW
+    setEditEsPortada(!!m.esPortada);
   };
 
   const cancelEdit = () => {
@@ -431,6 +443,7 @@ export default function AdminMediaPage() {
     setEditDescription("");
     setEditFeatured(false);
     setEditFullVideoUrl("");
+    setEditEsPortada(false);
   };
 
   const saveEdit = async (id: string) => {
@@ -450,8 +463,7 @@ export default function AdminMediaPage() {
     if (currentIsProjects) {
       if (!editAlbum.trim()) return setError("Para Projects, el Album no puede estar vacío");
       if (!editName.trim()) return setError("Para Projects, el Name no puede estar vacío");
-      if (!editDescription.trim())
-        return setError("Para Projects, la Description no puede estar vacía");
+      if (!editDescription.trim()) return setError("Para Projects, la Description no puede estar vacía");
     }
 
     setSaving(true);
@@ -467,6 +479,9 @@ export default function AdminMediaPage() {
           album: currentIsProjects ? editAlbum.trim() : undefined,
           name: currentIsProjects ? editName.trim() : undefined,
           description: currentIsProjects ? editDescription.trim() : undefined,
+
+          // ✅ NEW
+          esPortada: currentIsProjects ? editEsPortada : undefined,
 
           isFeatured: editFeatured,
           fullVideoUrl: editFullVideoUrl.trim(),
@@ -489,7 +504,6 @@ export default function AdminMediaPage() {
     }
   };
 
-  // ✅ computed filtered list
   const filteredItems = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return items.filter((m) => {
@@ -512,6 +526,7 @@ export default function AdminMediaPage() {
         m.url ?? "",
         m.publicId ?? "",
         m.fullVideoUrl ?? "",
+        m.esPortada ? "portada" : "",
       ]
         .join(" ")
         .toLowerCase();
@@ -534,9 +549,7 @@ export default function AdminMediaPage() {
             ← Volver
           </Link>
           <h1 className="mt-2 text-2xl font-semibold">Media</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Subí fotos y videos (teasers) a Cloudinary y guardalos en la base.
-          </p>
+          <p className="mt-1 text-sm text-gray-600">Subí fotos y videos (teasers) a Cloudinary y guardalos en la base.</p>
         </div>
 
         <button
@@ -549,9 +562,7 @@ export default function AdminMediaPage() {
       </div>
 
       {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
       {/* CREATE */}
@@ -562,7 +573,6 @@ export default function AdminMediaPage() {
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-6">
-          {/* legacy title */}
           <div className="md:col-span-2">
             <label className="text-sm font-medium">Título base (opcional)</label>
             <input
@@ -614,14 +624,20 @@ export default function AdminMediaPage() {
 
           <div className="flex items-end gap-3">
             <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={isFeatured}
-                onChange={(e) => setIsFeatured(e.target.checked)}
-              />
+              <input type="checkbox" checked={isFeatured} onChange={(e) => setIsFeatured(e.target.checked)} />
               Destacado
             </label>
           </div>
+
+          {/* ✅ NEW: Portada (solo Projects) */}
+          {isProjectsCategory && (
+            <div className="flex items-end gap-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={esPortada} onChange={(e) => setEsPortada(e.target.checked)} />
+                Es portada (máx 2 por álbum)
+              </label>
+            </div>
+          )}
 
           {type === "video" && (
             <div className="md:col-span-6">
@@ -635,7 +651,6 @@ export default function AdminMediaPage() {
             </div>
           )}
 
-          {/* ✅ Projects fields */}
           {isProjectsCategory && (
             <>
               <div className="md:col-span-2">
@@ -686,11 +701,7 @@ export default function AdminMediaPage() {
           {uploads.length > 0 && (
             <>
               <span className="text-sm text-gray-700">✅ Subidos: {uploads.length}</span>
-              <button
-                onClick={resetUploads}
-                className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
-                type="button"
-              >
+              <button onClick={resetUploads} className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100" type="button">
                 Limpiar
               </button>
             </>
@@ -742,7 +753,6 @@ export default function AdminMediaPage() {
             </p>
           </div>
 
-          {/* ✅ FILTER BAR */}
           <div className="grid gap-2 md:grid-cols-4 md:items-end">
             <div className="md:col-span-2">
               <label className="text-xs text-gray-600">Buscar</label>
@@ -785,11 +795,7 @@ export default function AdminMediaPage() {
               </select>
             </div>
 
-            <button
-              onClick={clearFilters}
-              className="md:col-span-4 rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
-              type="button"
-            >
+            <button onClick={clearFilters} className="md:col-span-4 rounded-xl border px-3 py-2 text-sm hover:bg-gray-100" type="button">
               Limpiar filtros
             </button>
           </div>
@@ -804,11 +810,17 @@ export default function AdminMediaPage() {
             {filteredItems.map((m) => {
               const catName = typeof m.category === "string" ? m.category : ((m.category as any)?.name ?? "-");
               const isEditing = editingId === m._id;
-              const thisIsProjects = catName.toLowerCase().trim() === "projects" || catName.toLowerCase().trim() === "project";
+              const thisIsProjects =
+                catName.toLowerCase().trim() === "projects" || catName.toLowerCase().trim() === "project";
 
               return (
                 <div key={m._id} className="rounded-2xl border bg-white p-3">
-                  <div className="text-xs text-gray-500">{catName}</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs text-gray-500">{catName}</div>
+                    {!isEditing && thisIsProjects && m.esPortada && (
+                      <span className="text-xs text-gray-700">🖼️ Portada</span>
+                    )}
+                  </div>
 
                   {!isEditing ? (
                     <>
@@ -853,6 +865,15 @@ export default function AdminMediaPage() {
                             className="mt-2 w-full rounded-lg border px-2 py-1 text-sm min-h-[60px]"
                             placeholder="Description"
                           />
+
+                          <label className="mt-2 flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={editEsPortada}
+                              onChange={(e) => setEditEsPortada(e.target.checked)}
+                            />
+                            Es portada
+                          </label>
                         </>
                       )}
                     </>
@@ -892,10 +913,12 @@ export default function AdminMediaPage() {
                     {!isEditing ? (
                       <span className="text-xs text-gray-600">{m.isFeatured ? "⭐ Destacado" : ""}</span>
                     ) : (
-                      <label className="flex items-center gap-2 text-sm">
-                        <input type="checkbox" checked={editFeatured} onChange={(e) => setEditFeatured(e.target.checked)} />
-                        Destacado
-                      </label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" checked={editFeatured} onChange={(e) => setEditFeatured(e.target.checked)} />
+                          Destacado
+                        </label>
+                      </div>
                     )}
 
                     <div className="flex items-center gap-2">
