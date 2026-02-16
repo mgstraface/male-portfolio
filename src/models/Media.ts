@@ -7,12 +7,28 @@ const MediaSchema = new Schema(
     name: { type: String, trim: true },
     description: { type: String, trim: true },
 
-    type: { type: String, enum: ["photo", "video"], required: true, default: "photo" },
+    type: {
+      type: String,
+      enum: ["photo", "video"],
+      required: true,
+      default: "photo",
+    },
 
-    // ✅ NUEVO: album para agrupar Projects
+    // ✅ Agrupador de proyectos
     album: { type: String, trim: true, default: null, index: true },
 
-    category: { type: Types.ObjectId, ref: "Category", required: true },
+    // ✅ NUEVO: marca si es portada del álbum
+    esPortada: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    category: {
+      type: Types.ObjectId,
+      ref: "Category",
+      required: true,
+    },
 
     url: { type: String, required: true },
     thumbnail: { type: String },
@@ -20,7 +36,10 @@ const MediaSchema = new Schema(
     isFeatured: { type: Boolean, default: false },
 
     publicId: { type: String },
-    resourceType: { type: String, enum: ["image", "video"] },
+    resourceType: {
+      type: String,
+      enum: ["image", "video"],
+    },
 
     fullVideoUrl: { type: String, trim: true },
   },
