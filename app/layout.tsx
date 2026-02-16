@@ -73,7 +73,7 @@ const thirstyCaps = localFont({
 
 export const metadata: Metadata = {
   title: "Male Straface",
-  description: "Portfolio Malena Straface - Dancer & Model",
+  description: "Portfolio Malena Straface - Dancer, Model & Audiovisual Creator",
 };
 
 export default function RootLayout({
