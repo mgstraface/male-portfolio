@@ -176,7 +176,7 @@ export default async function HomePage() {
         phone="+54 3401 43-4757"
         instagramUrl="https://instagram.com/malestraface"
         tiktokUrl="https://www.tiktok.com/@maaleeee4"
-        youtubeUrl="https://youtube.com/@malenastraface3406"
+        youtubeUrl="https://youtube.com/@MaleStraface"
       />
 
 
