@@ -15,6 +15,9 @@ type ProjectThumb = {
   name?: string;
   description?: string;
   title?: string;
+
+  // ✅ NUEVO
+  esPortada?: boolean;
 };
 
 type ProjectApiGroup = {
@@ -33,7 +36,7 @@ type ProjectApiGroup = {
     fullVideoUrl?: string;
   };
 
-  thumbs: ProjectThumb[]; // max 2
+  thumbs: ProjectThumb[]; // max 2 (pero igual lo ordenamos)
 };
 
 type ProjectsApiResponse =
@@ -86,6 +89,19 @@ function pickPosterImage(it?: { url?: string; thumbnail?: string }) {
   if (it.thumbnail && isImageUrl(it.thumbnail)) return it.thumbnail;
   if (it.url && isImageUrl(it.url)) return it.url;
   return undefined;
+}
+
+/** ✅ Orden: primero esPortada=true, si no hay portadas => devuelve igual */
+function sortPortadas<T extends { esPortada?: boolean }>(arr: T[]) {
+  if (!Array.isArray(arr) || arr.length < 2) return arr || [];
+  const hasAny = arr.some((x) => !!x?.esPortada);
+  if (!hasAny) return arr;
+
+  // estable: preserva orden relativo
+  const portadas: T[] = [];
+  const rest: T[] = [];
+  for (const x of arr) (x?.esPortada ? portadas : rest).push(x);
+  return [...portadas, ...rest];
 }
 
 function MediaThumb({
@@ -143,10 +159,7 @@ function MediaThumb({
           "absolute inset-0 h-full w-full object-cover",
           "transition duration-300 will-change-transform",
 
-          // ✅ MOBILE: siempre a color (no hay hover)
           "filter brightness-95",
-
-          // ✅ DESKTOP: arranca gris y se colorea en hover
           "md:grayscale md:contrast-125 md:brightness-90",
           "md:group-hover:grayscale-0 md:group-hover:brightness-100",
 
@@ -221,7 +234,7 @@ function ProjectModal({
   description: string;
   initialItems: ProjectThumb[];
 }) {
-  const [items, setItems] = useState<ProjectThumb[]>(initialItems || []);
+  const [items, setItems] = useState<ProjectThumb[]>(sortPortadas(initialItems || []));
   const [active, setActive] = useState(0);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -251,7 +264,8 @@ function ProjectModal({
           return true;
         });
 
-        setItems(clean);
+        // ✅ portadas primero (si existen)
+        setItems(sortPortadas(clean));
       } catch (e: any) {
         if (!alive) return;
         setErr(e?.message || "Error cargando álbum");
@@ -266,7 +280,6 @@ function ProjectModal({
     };
   }, [open, album]);
 
-  // ✅ Bloquear scroll del background mientras el modal está abierto
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -345,9 +358,7 @@ function ProjectModal({
               <div className="relative overflow-hidden rounded-2xl bg-black">
                 <div className="h-[42vh] md:h-[50vh]">
                   {!current ? (
-                    <div className="h-full w-full grid place-items-center text-white/60">
-                      Sin archivos
-                    </div>
+                    <div className="h-full w-full grid place-items-center text-white/60">Sin archivos</div>
                   ) : currentIsVideo ? (
                     <video
                       src={current.url}
@@ -405,8 +416,6 @@ function ProjectModal({
                         alt="thumb"
                         className={cn(
                           "absolute inset-0 h-full w-full object-cover",
-
-                          // ✅ miniaturas: color en mobile, hover solo desktop
                           "filter brightness-95",
                           "md:grayscale md:contrast-125 md:brightness-90",
                           "md:hover:grayscale-0 md:hover:brightness-100",
@@ -449,7 +458,8 @@ function ProjectCard({
   const desc = group.description || "";
   const count = group.count || 1;
 
-  const thumbs = group.thumbs || [];
+  // ✅ portadas primero si existen
+  const thumbs = sortPortadas(group.thumbs || []);
 
   const videoThumb = thumbs.find((t) => isVideoUrl(t.url));
   const imageThumb = thumbs.find((t) => isImageUrl(t.url));
@@ -473,16 +483,12 @@ function ProjectCard({
         "border border-white/25 ring-2 ring-white/15 ring-inset",
         "ring-2 ring-white/10",
         "ring-inset",
-
-        // ✅ Alternancia: mobile y desktop por separado
         isRedMobile ? "bg-[#C81D25]" : "bg-black",
         isRedDesktop ? "md:bg-[#C81D25]" : "md:bg-black",
-
         "p-6 md:p-8"
       )}
     >
       <div className="grid items-start gap-6 md:grid-cols-12">
-        {/* TEXTO */}
         <div className="md:col-span-5 flex flex-col h-full">
           <div className="relative mt-2">
             <div
@@ -539,7 +545,6 @@ function ProjectCard({
           </button>
         </div>
 
-        {/* MEDIA */}
         <div className="md:col-span-7">
           {!showTwo && (
             <div className={cn("relative", MEDIA_H)}>
@@ -700,12 +705,10 @@ export default function ProjectsSection({
 
       <div className="grid gap-6 md:grid-cols-2">
         {groups.map((g, i) => {
-          // ✅ MOBILE: rojo/negro alternado (0 rojo, 1 negro, 2 rojo...)
           const isRedMobile = i % 2 === 0;
 
-          // ✅ DESKTOP (2 cols): patrón por fila
           const row = Math.floor(i / 2);
-          const col = i % 2; // 0 izq, 1 der
+          const col = i % 2;
           const isRedDesktop = row % 2 === 0 ? col === 0 : col === 1;
 
           return (
@@ -741,7 +744,7 @@ export default function ProjectsSection({
           album={activeGroup.album}
           title={activeGroup.name || activeGroup.album}
           description={activeGroup.description || ""}
-          initialItems={activeGroup.thumbs || []}
+          initialItems={sortPortadas(activeGroup.thumbs || [])}
         />
       )}
     </section>
