@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Media from "@/models/Media";
 import Category from "@/models/Category";
-import { requireAdmin } from "@/lib/auth"; // tu helper de auth (el mismo que uses en categories)
+import { requireAdmin } from "@/lib/auth";
 import { z } from "zod";
 
 const CreateSchema = z.object({
@@ -16,8 +16,10 @@ const CreateSchema = z.object({
   category: z.string(),
   url: z.string().min(1),
 
-  // ✅ NUEVO
   album: z.string().optional(),
+
+  // ✅ NUEVO
+  esPortada: z.boolean().optional(),
 
   thumbnail: z.string().optional(),
   isFeatured: z.boolean().optional(),
@@ -33,9 +35,10 @@ export async function GET() {
     await dbConnect();
 
     // ✅ público
+    // (Opcional) portadas primero globalmente
     const items = await Media.find({})
       .populate("category")
-      .sort({ createdAt: -1 })
+      .sort({ esPortada: -1, createdAt: -1 })
       .lean();
 
     return NextResponse.json({ ok: true, items });
@@ -47,9 +50,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    // ✅ solo admin
     await requireAdmin();
-
     await dbConnect();
 
     const body = await req.json();
@@ -69,7 +70,8 @@ export async function POST(req: Request) {
       type,
       category,
       url,
-      album, // ✅ NUEVO
+      album,
+      esPortada, // ✅ NUEVO
       thumbnail,
       isFeatured,
       publicId,
@@ -83,8 +85,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Categoría inválida" }, { status: 400 });
     }
 
-    // (opcional) si querés validar que type coincida con cat.type:
-    // if (cat.type !== type) ...
+    const albumNormalized = album?.trim() ? album.trim() : null;
+    const esPortadaBool = !!esPortada;
+
+    // ✅ Regla: máximo 2 portadas por álbum
+    // (solo aplica si esPortada=true y hay album)
+    if (esPortadaBool && albumNormalized) {
+      const count = await Media.countDocuments({
+        album: albumNormalized,
+        esPortada: true,
+      });
+
+      if (count >= 2) {
+        return NextResponse.json(
+          { ok: false, error: "Este álbum ya tiene 2 portadas" },
+          { status: 400 }
+        );
+      }
+    }
 
     const item = await Media.create({
       title: title?.trim() || "",
@@ -95,8 +113,10 @@ export async function POST(req: Request) {
       category,
       url,
 
-      // ✅ NUEVO (si viene vacío => null)
-      album: album?.trim() ? album.trim() : null,
+      album: albumNormalized,
+
+      // ✅ NUEVO
+      esPortada: esPortadaBool,
 
       thumbnail: thumbnail?.trim() || "",
       isFeatured: !!isFeatured,
