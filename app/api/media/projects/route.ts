@@ -55,40 +55,55 @@ export async function GET(req: Request) {
     const total = totalAgg?.[0]?.total || 0;
     const totalPages = total ? Math.ceil(total / limit) : 0;
 
-    // page de grupos
+    /**
+     * ✅ Clave:
+     * - Normalizamos esPortada a number (1/0)
+     * - Ordenamos primero por portada, luego por createdAt desc
+     * - Así $first y $push quedan "portada-first"
+     */
     const projects = await Media.aggregate([
       { $match: baseMatch },
-      { $sort: { createdAt: -1 } },
 
-      // agrupamos por album
+      {
+        $addFields: {
+          _isPortada: { $cond: [{ $eq: ["$esPortada", true] }, 1, 0] },
+        },
+      },
+
+      // primero portadas, después lo más nuevo
+      { $sort: { _isPortada: -1, createdAt: -1 } },
+
       {
         $group: {
           _id: "$album",
 
-          // meta
+          // meta (como ya ordenamos, esto agarra portada si existe)
           album: { $first: "$album" },
           name: { $first: "$name" },
           description: { $first: "$description" },
 
           count: { $sum: 1 },
+
           hasVideo: {
             $max: {
               $cond: [{ $eq: ["$type", "video"] }, 1, 0],
             },
           },
+
           lastCreatedAt: { $max: "$createdAt" },
 
-          // cover = el más reciente
+          // cover = portada si existe, sino el más reciente
           cover: {
             $first: {
               type: "$type",
               url: "$url",
               thumbnail: "$thumbnail",
               fullVideoUrl: "$fullVideoUrl",
+              esPortada: "$esPortada",
             },
           },
 
-          // thumbs (vamos a cortar a 2 después)
+          // thumbs ordenados (portadas primero)
           thumbsAll: {
             $push: {
               _id: "$_id",
@@ -96,14 +111,16 @@ export async function GET(req: Request) {
               url: "$url",
               thumbnail: "$thumbnail",
               fullVideoUrl: "$fullVideoUrl",
+              esPortada: "$esPortada",
             },
           },
         },
       },
 
       { $addFields: { thumbs: { $slice: ["$thumbsAll", 2] }, hasVideo: { $eq: ["$hasVideo", 1] } } },
-      { $project: { thumbsAll: 0 } },
+      { $project: { thumbsAll: 0, _isPortada: 0 } },
 
+      // orden final de grupos por el más nuevo (no por portada)
       { $sort: { lastCreatedAt: -1 } },
       { $skip: skip },
       { $limit: limit },

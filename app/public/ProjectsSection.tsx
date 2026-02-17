@@ -36,7 +36,7 @@ type ProjectApiGroup = {
     fullVideoUrl?: string;
   };
 
-  thumbs: ProjectThumb[]; // max 2 (pero igual lo ordenamos)
+  thumbs: ProjectThumb[]; // max 2 (pero vamos a reemplazar si faltan portadas)
 };
 
 type ProjectsApiResponse =
@@ -91,17 +91,41 @@ function pickPosterImage(it?: { url?: string; thumbnail?: string }) {
   return undefined;
 }
 
-/** ✅ Orden: primero esPortada=true, si no hay portadas => devuelve igual */
+/** ✅ Orden estable: primero esPortada=true, si no hay portadas => devuelve igual */
 function sortPortadas<T extends { esPortada?: boolean }>(arr: T[]) {
   if (!Array.isArray(arr) || arr.length < 2) return arr || [];
   const hasAny = arr.some((x) => !!x?.esPortada);
   if (!hasAny) return arr;
 
-  // estable: preserva orden relativo
   const portadas: T[] = [];
   const rest: T[] = [];
   for (const x of arr) (x?.esPortada ? portadas : rest).push(x);
   return [...portadas, ...rest];
+}
+
+/** ✅ Arma hasta 2 thumbs:
+ *  - primero portadas (máx 2)
+ *  - si falta, completa con no-portadas
+ *  - dedupe por _id/url
+ */
+function takeTop2PreferPortadas(items: ProjectThumb[]) {
+  const list = Array.isArray(items) ? items : [];
+  const seen = new Set<string>();
+  const deduped = list.filter((x) => {
+    const k = String((x as any)?._id || x?.url || "");
+    if (!k) return false;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+
+  const ordered = sortPortadas(deduped);
+  const portadas = ordered.filter((x) => !!x.esPortada).slice(0, 2);
+  if (portadas.length >= 2) return portadas;
+
+  const rest = ordered.filter((x) => !x.esPortada);
+  const fill = rest.slice(0, 2 - portadas.length);
+  return [...portadas, ...fill];
 }
 
 function MediaThumb({
@@ -158,11 +182,9 @@ function MediaThumb({
         className={cn(
           "absolute inset-0 h-full w-full object-cover",
           "transition duration-300 will-change-transform",
-
           "filter brightness-95",
           "md:grayscale md:contrast-125 md:brightness-90",
           "md:group-hover:grayscale-0 md:group-hover:brightness-100",
-
           "group-hover:scale-[1.03]"
         )}
         loading="lazy"
@@ -249,9 +271,7 @@ function ProjectModal({
 
     (async () => {
       try {
-        const res = await fetch(`/api/media/projects/${encodeURIComponent(album)}`, {
-          cache: "no-store",
-        });
+        const res = await fetch(`/api/media/projects/${encodeURIComponent(album)}`, { cache: "no-store" });
         const data = (await res.json()) as AlbumItemsResponse;
         if (!res.ok || !data.ok) throw new Error(!data.ok ? data.error : "Error cargando álbum");
         if (!alive) return;
@@ -264,7 +284,6 @@ function ProjectModal({
           return true;
         });
 
-        // ✅ portadas primero (si existen)
         setItems(sortPortadas(clean));
       } catch (e: any) {
         if (!alive) return;
@@ -325,10 +344,7 @@ function ProjectModal({
         >
           <div className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
             <div>
-              <div
-                style={{ fontFamily: "var(--font-battle)", fontSize: "3rem" }}
-                className="mt-1 text-2xl font-semibold text-white"
-              >
+              <div style={{ fontFamily: "var(--font-battle)", fontSize: "3rem" }} className="mt-1 text-2xl font-semibold text-white">
                 {title}
               </div>
               {description ? (
@@ -396,6 +412,7 @@ function ProjectModal({
 
               <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
                 {items.map((it, idx) => {
+                
                   const itIsVideo = isVideoUrl(it.url);
                   const tPoster = pickPosterImage(it) || it.url;
 
@@ -428,6 +445,11 @@ function ProjectModal({
                           video
                         </div>
                       )}
+                      {!!it.esPortada && (
+                        <div className="absolute left-2 top-2 rounded-full bg-black/60 border border-white/20 px-2 py-1 text-[10px] text-white">
+                          portada
+                        </div>
+                      )}
                     </button>
                   );
                 })}
@@ -443,7 +465,6 @@ function ProjectModal({
 /** ---------- Card ---------- */
 function ProjectCard({
   group,
-  index,
   onOpen,
   isRedMobile,
   isRedDesktop,
@@ -458,58 +479,90 @@ function ProjectCard({
   const desc = group.description || "";
   const count = group.count || 1;
 
-  // ✅ portadas primero si existen
-  const thumbs = sortPortadas(group.thumbs || []);
+  // ✅ thumbs “iniciales” del endpoint (pueden NO traer las portadas)
+  const [thumbs, setThumbs] = useState<ProjectThumb[]>(takeTop2PreferPortadas(group.thumbs || []));
+console.log(group)
+  // ✅ si el endpoint NO trajo ninguna portada pero en el álbum sí hay, traemos 1 vez el álbum y elegimos portadas
+  useEffect(() => {
+    const alreadyHasPortada = (group.thumbs || []).some((x) => !!x?.esPortada);
+    if (alreadyHasPortada) return;
 
-  const videoThumb = thumbs.find((t) => isVideoUrl(t.url));
-  const imageThumb = thumbs.find((t) => isImageUrl(t.url));
+    let alive = true;
 
+    (async () => {
+      try {
+        const res = await fetch(`/api/media/projects/${encodeURIComponent(group.album)}`, { cache: "no-store" });
+        const data = (await res.json()) as AlbumItemsResponse;
+        if (!res.ok || !data.ok) return;
+        if (!alive) return;
+
+        const picked = takeTop2PreferPortadas(data.items || []);
+        // solo reemplazamos si realmente encontramos portadas (así no spameamos cambios)
+        const foundPortada = picked.some((x) => !!x.esPortada);
+        if (foundPortada) setThumbs(picked);
+      } catch {
+        // silencioso: si falla, seguimos con lo que ya vino
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [group.album, group.thumbs]);
+
+  // ✅ si por lo que sea quedó vacío, fallback a cover
+  const effectiveThumbs = thumbs.length ? thumbs : takeTop2PreferPortadas([group.cover as any].filter(Boolean));
+
+  const videoThumb = effectiveThumbs.find((t) => isVideoUrl(t.url));
+  const imageThumb = effectiveThumbs.find((t) => isImageUrl(t.url));
+
+  // ✅ si hay 1 video + 1 imagen => mostramos SOLO UNA (la del video) con poster de la imagen
   const forceSingle = !!videoThumb && !!imageThumb;
   const posterImage = imageThumb?.url;
 
-  const showTwo = !forceSingle && count >= 2 && thumbs.length >= 2;
+  const showTwo = !forceSingle && count >= 2 && effectiveThumbs.length >= 2;
 
   const [o1, setO1] = useState<"h" | "v">("v");
   const [o2, setO2] = useState<"h" | "v">("v");
 
   const stackVertical = showTwo && o1 === "h" && o2 === "h";
   const more = Math.max(0, count - (showTwo ? 2 : 1));
-  const MEDIA_H = "h-[320px] md:h-[340px]";
+
+  // ✅ clave: media siempre ocupa TODO el alto disponible del card
+  // (y el card “estira” con items-stretch en el grid)
+  const MEDIA_BOX = "h-full min-h-[320px] md:min-h-[340px]";
 
   return (
     <article
       className={cn(
-        "rounded-[0px] overflow-hidden",
-        "border border-white/25 ring-2 ring-white/15 ring-inset",
-        "ring-2 ring-white/10",
-        "ring-inset",
+        "h-full rounded-[0px] overflow-hidden",
+        "border border-white/25 ring-2 ring-white/10 ring-inset",
         isRedMobile ? "bg-[#C81D25]" : "bg-black",
         isRedDesktop ? "md:bg-[#C81D25]" : "md:bg-black",
-        "p-6 md:p-8"
+        "p-5 md:p-7"
       )}
     >
-      <div className="grid items-start gap-6 md:grid-cols-12">
+      <div className="grid items-stretch gap-5 md:grid-cols-12 h-full">
+        {/* TEXTO */}
         <div className="md:col-span-5 flex flex-col h-full">
-          <div className="relative mt-2">
+          <div className="relative">
             <div
               aria-hidden
               style={{ fontFamily: "var(--font-outline)" }}
               className="
-                absolute -top-2 inset-x-0
-                uppercase
-                leading-none tracking-widest
+                absolute -top-1 inset-x-0
+                uppercase leading-none tracking-widest
                 text-white/12
-                text-[64px] md:text-[90px] lg:text-[110px]
-                pointer-events-none
-                text-center
-                select-none
+                text-[54px] md:text-[78px] lg:text-[92px]
+                pointer-events-none text-center select-none
               "
             >
               {title}
             </div>
 
-            <div className="relative pt-10">
-              <div style={{ fontFamily: "var(--font-battle)" }} className="text-4xl md:text-5xl text-white">
+            {/* ✅ menos padding arriba */}
+            <div className="relative pt-7">
+              <div style={{ fontFamily: "var(--font-battle)" }} className="text-3xl md:text-4xl text-white">
                 {title}
               </div>
             </div>
@@ -518,15 +571,15 @@ function ProjectCard({
           {desc ? (
             <p
               style={{ fontFamily: "var(--font-nunito)" }}
-              className="mt-3 text-white/75 leading-relaxed text-2xl md:text-xl"
+              className="mt-2 text-white/75 leading-relaxed text-lg md:text-base"
             >
               {desc}
             </p>
           ) : (
-            <p className="mt-3 text-white/55 leading-relaxed">Proyecto sin descripción.</p>
+            <p className="mt-2 text-white/55 leading-relaxed text-sm">Proyecto sin descripción.</p>
           )}
 
-          <div className="mt-5 flex flex-wrap items-center gap-3">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-white/80">
               {count} {count === 1 ? "archivo" : "archivos"}
             </span>
@@ -534,27 +587,35 @@ function ProjectCard({
             <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-white/80">
               {group.hasVideo ? (count > 1 ? "Foto + Video" : "Video") : "Foto"}
             </span>
+
+            {effectiveThumbs.some((x) => !!x.esPortada) && (
+              <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-white/80">
+                Portadas
+              </span>
+            )}
           </div>
 
+          {/* ✅ botón abajo siempre */}
           <button
             type="button"
             onClick={() => onOpen(group)}
-            className="mt-6 w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm text-white hover:bg-white/10 md:w-auto md:self-start md:mt-auto"
+            className="mt-5 md:mt-auto w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm text-white hover:bg-white/10 md:w-auto md:self-start"
           >
             Ver
           </button>
         </div>
 
-        <div className="md:col-span-7">
+        {/* MEDIA */}
+        <div className="md:col-span-7 h-full">
           {!showTwo && (
-            <div className={cn("relative", MEDIA_H)}>
+            <div className={cn("relative", MEDIA_BOX)}>
               <MediaThumb
                 item={
                   forceSingle && videoThumb
                     ? { url: videoThumb.url, thumbnail: posterImage }
                     : {
-                        url: thumbs[0]?.url || group.cover?.url,
-                        thumbnail: thumbs[0]?.thumbnail || group.cover?.thumbnail,
+                        url: effectiveThumbs[0]?.url || group.cover?.url,
+                        thumbnail: effectiveThumbs[0]?.thumbnail || group.cover?.thumbnail,
                       }
                 }
                 className="h-full w-full"
@@ -577,24 +638,23 @@ function ProjectCard({
           )}
 
           {showTwo && (
-            <div className={cn("relative", MEDIA_H)}>
+            <div className={cn("relative", MEDIA_BOX)}>
               <div
                 className={cn(
                   "relative h-full",
-                  "grid gap-1",
-                  "pb-px",
+                  "grid gap-1 pb-px",
                   stackVertical ? "grid-cols-1 grid-rows-2" : "grid-cols-2"
                 )}
               >
                 <MediaThumb
-                  item={thumbs[0]}
+                  item={effectiveThumbs[0]}
                   className="h-full w-full"
                   showPlayIcon={false}
                   onOrientation={setO1}
                   onClick={() => onOpen(group)}
                 />
                 <MediaThumb
-                  item={thumbs[1]}
+                  item={effectiveThumbs[1]}
                   className="h-full w-full"
                   showPlayIcon={false}
                   onOrientation={setO2}
@@ -618,8 +678,6 @@ function ProjectCard({
 /** ---------- Section (paginado + modal) ---------- */
 export default function ProjectsSection({
   initial,
-  title = "Projects",
-  subtitle = "Selección de proyectos y sesiones",
   pageSize = 6,
 }: {
   initial: ProjectsApiResponse;
@@ -661,9 +719,7 @@ export default function ProjectsSection({
 
     try {
       const nextPage = page + 1;
-      const res = await fetch(`/api/media/projects?page=${nextPage}&limit=${pageSize}`, {
-        cache: "no-store",
-      });
+      const res = await fetch(`/api/media/projects?page=${nextPage}&limit=${pageSize}`, { cache: "no-store" });
       const data = (await res.json()) as ProjectsApiResponse;
 
       if (!res.ok || !data.ok) throw new Error(!data.ok ? data.error : "Error cargando más");
@@ -703,7 +759,7 @@ export default function ProjectsSection({
         </div>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 items-stretch">
         {groups.map((g, i) => {
           const isRedMobile = i % 2 === 0;
 
