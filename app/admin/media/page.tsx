@@ -80,9 +80,6 @@ export default function AdminMediaPage() {
   const [isFeatured, setIsFeatured] = useState(false);
   const [fullVideoUrl, setFullVideoUrl] = useState("");
 
-  // ✅ NEW
-  const [esPortada, setEsPortada] = useState(false);
-
   // multiple uploads
   const [uploads, setUploads] = useState<UploadItem[]>([]);
 
@@ -98,7 +95,7 @@ export default function AdminMediaPage() {
   const [editFeatured, setEditFeatured] = useState(false);
   const [editFullVideoUrl, setEditFullVideoUrl] = useState("");
 
-  // ✅ NEW
+  // ✅ Portada SOLO en edición
   const [editEsPortada, setEditEsPortada] = useState(false);
 
   // ✅ FILTERS
@@ -177,7 +174,6 @@ export default function AdminMediaPage() {
     setName("");
     setDescription("");
     setIsFeatured(false);
-    setEsPortada(false);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
@@ -266,8 +262,9 @@ export default function AdminMediaPage() {
             name: isProjectsCategory ? name.trim() : undefined,
             description: isProjectsCategory ? description.trim() : undefined,
 
-            // ✅ NEW
-            esPortada: isProjectsCategory ? esPortada : undefined,
+            // ✅ IMPORTANTE:
+            // NO seteamos portada al crear batch (se elige luego editando)
+            // esPortada: undefined
 
             type,
             category: categoryId,
@@ -299,7 +296,6 @@ export default function AdminMediaPage() {
       setName("");
       setDescription("");
       setIsFeatured(false);
-      setEsPortada(false);
       setFullVideoUrl("");
       resetUploads();
     } catch (e: unknown) {
@@ -431,7 +427,7 @@ export default function AdminMediaPage() {
     setEditFeatured(!!m.isFeatured);
     setEditFullVideoUrl(m.fullVideoUrl || "");
 
-    // ✅ NEW
+    // ✅ portada (solo edición)
     setEditEsPortada(!!m.esPortada);
   };
 
@@ -480,7 +476,7 @@ export default function AdminMediaPage() {
           name: currentIsProjects ? editName.trim() : undefined,
           description: currentIsProjects ? editDescription.trim() : undefined,
 
-          // ✅ NEW
+          // ✅ portada SOLO acá
           esPortada: currentIsProjects ? editEsPortada : undefined,
 
           isFeatured: editFeatured,
@@ -628,16 +624,6 @@ export default function AdminMediaPage() {
               Destacado
             </label>
           </div>
-
-          {/* ✅ NEW: Portada (solo Projects) */}
-          {isProjectsCategory && (
-            <div className="flex items-end gap-3">
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={esPortada} onChange={(e) => setEsPortada(e.target.checked)} />
-                Es portada (máx 2 por álbum)
-              </label>
-            </div>
-          )}
 
           {type === "video" && (
             <div className="md:col-span-6">
@@ -795,7 +781,11 @@ export default function AdminMediaPage() {
               </select>
             </div>
 
-            <button onClick={clearFilters} className="md:col-span-4 rounded-xl border px-3 py-2 text-sm hover:bg-gray-100" type="button">
+            <button
+              onClick={clearFilters}
+              className="md:col-span-4 rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
+              type="button"
+            >
               Limpiar filtros
             </button>
           </div>
@@ -892,14 +882,21 @@ export default function AdminMediaPage() {
                   </div>
 
                   {m.type === "video" && !isEditing && m.fullVideoUrl && (
-                    <a className="mt-2 block text-sm text-blue-600 hover:underline" href={m.fullVideoUrl} target="_blank" rel="noreferrer">
+                    <a
+                      className="mt-2 block text-sm text-blue-600 hover:underline"
+                      href={m.fullVideoUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                       Ver video completo
                     </a>
                   )}
 
                   {m.type === "video" && isEditing && (
                     <div className="mt-2">
-                      <label className="text-xs text-gray-600">{thisIsProjects ? "Link externo (Ver proyecto)" : "Link video completo"}</label>
+                      <label className="text-xs text-gray-600">
+                        {thisIsProjects ? "Link externo (Ver proyecto)" : "Link video completo"}
+                      </label>
                       <input
                         value={editFullVideoUrl}
                         onChange={(e) => setEditFullVideoUrl(e.target.value)}
