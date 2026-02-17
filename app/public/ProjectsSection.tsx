@@ -481,7 +481,7 @@ function ProjectCard({
 
   // ✅ thumbs “iniciales” del endpoint (pueden NO traer las portadas)
   const [thumbs, setThumbs] = useState<ProjectThumb[]>(takeTop2PreferPortadas(group.thumbs || []));
-console.log(group)
+
   // ✅ si el endpoint NO trajo ninguna portada pero en el álbum sí hay, traemos 1 vez el álbum y elegimos portadas
   useEffect(() => {
     const alreadyHasPortada = (group.thumbs || []).some((x) => !!x?.esPortada);
@@ -588,11 +588,7 @@ console.log(group)
               {group.hasVideo ? (count > 1 ? "Foto + Video" : "Video") : "Foto"}
             </span>
 
-            {effectiveThumbs.some((x) => !!x.esPortada) && (
-              <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-white/80">
-                Portadas
-              </span>
-            )}
+         
           </div>
 
           {/* ✅ botón abajo siempre */}
