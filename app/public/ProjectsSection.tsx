@@ -344,11 +344,28 @@ function ProjectModal({
         >
           <div className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
             <div>
-              <div style={{ fontFamily: "var(--font-battle)", fontSize: "3rem" }} className="mt-1 text-2xl font-semibold text-white">
-                {title}
-              </div>
+              <div
+  style={{ fontFamily: "var(--font-battle)" }}
+  className="
+    mt-1
+    font-normal
+    text-white
+    text-3xl        /* mobile */
+    sm:text-4xl     /* tablet */
+    md:text-5xl     /* desktop */
+    lg:text-[3rem]  /* grande */
+  "
+>
+  {title}
+</div>
               {description ? (
-                <div style={{ fontSize: "1.3rem" }} className="mt-2 text-sm text-white/70">
+                <div className="  mt-1
+    font-normal
+    text-white
+    text-3xl        /* mobile */
+    sm:text-4xl     /* tablet */
+    md:text-2xl     /* desktop */
+      /* grande */mt-2 text-sm text-white/70">
                   {description}
                 </div>
               ) : null}
