@@ -91,41 +91,25 @@ function pickPosterImage(it?: { url?: string; thumbnail?: string }) {
   return undefined;
 }
 
-/** ✅ Orden estable: primero esPortada=true, si no hay portadas => devuelve igual */
-function sortPortadas<T extends { esPortada?: boolean }>(arr: T[]) {
-  if (!Array.isArray(arr) || arr.length < 2) return arr || [];
-  const hasAny = arr.some((x) => !!x?.esPortada);
-  if (!hasAny) return arr;
-
-  const portadas: T[] = [];
-  const rest: T[] = [];
-  for (const x of arr) (x?.esPortada ? portadas : rest).push(x);
-  return [...portadas, ...rest];
-}
-
-/** ✅ Arma hasta 2 thumbs:
- *  - primero portadas (máx 2)
- *  - si falta, completa con no-portadas
- *  - dedupe por _id/url
+/**
+ * ✅ Normaliza videos para iOS/Safari:
+ * - fuerza MP4 + H264 + AAC
+ * - baja calidad/bitrate automáticamente
+ * - limita ancho a 1080 (mantiene proporción)
+ *
+ * Esto evita videos "rotos" en mobile por resoluciones gigantes (ej 2400x4302).
  */
-function takeTop2PreferPortadas(items: ProjectThumb[]) {
-  const list = Array.isArray(items) ? items : [];
-  const seen = new Set<string>();
-  const deduped = list.filter((x) => {
-    const k = String((x as any)?._id || x?.url || "");
-    if (!k) return false;
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
+function normalizeCloudinaryVideo(url?: string) {
+  if (!url) return "";
+  if (!url.includes("/video/upload/")) return url;
 
-  const ordered = sortPortadas(deduped);
-  const portadas = ordered.filter((x) => !!x.esPortada).slice(0, 2);
-  if (portadas.length >= 2) return portadas;
+  // Si ya viene transformado con f_mp4 o w_, no tocamos (evita duplicar transforms)
+  if (url.includes("/video/upload/f_mp4") || url.includes("/video/upload/w_")) return url;
 
-  const rest = ordered.filter((x) => !x.esPortada);
-  const fill = rest.slice(0, 2 - portadas.length);
-  return [...portadas, ...fill];
+  const [base, rest] = url.split("/video/upload/");
+  if (!base || !rest) return url;
+
+  return `${base}/video/upload/f_mp4,vc_h264,ac_aac,q_auto:good,w_1080/${rest}`;
 }
 
 function MediaThumb({
@@ -205,11 +189,11 @@ function MediaThumb({
       {isVideo && (
         <video
           ref={videoRef}
-          src={item.url}
+          src={normalizeCloudinaryVideo(item.url)}
           muted
           playsInline
           loop
-          preload="auto"
+          preload="metadata"
           className={cn(
             "absolute inset-0 h-full w-full object-cover",
             "opacity-0 md:group-hover:opacity-100 transition-opacity duration-200"
@@ -345,29 +329,22 @@ function ProjectModal({
           <div className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
             <div>
               <div
-  style={{ fontFamily: "var(--font-battle)" }}
-  className="
-    mt-1
-    font-normal
-    text-white
-    text-3xl        /* mobile */
-    sm:text-4xl     /* tablet */
-    md:text-5xl     /* desktop */
-    lg:text-[3rem]  /* grande */
-  "
->
-  {title}
-</div>
+                style={{ fontFamily: "var(--font-battle)" }}
+                className="
+                  mt-1
+                  font-normal
+                  text-white
+                  text-3xl        /* mobile */
+                  sm:text-4xl     /* tablet */
+                  md:text-5xl     /* desktop */
+                  lg:text-[3rem]  /* grande */
+                "
+              >
+                {title}
+              </div>
+
               {description ? (
-                <div className="  mt-1
-    font-normal
-    text-white
-    text-3xl        /* mobile */
-    sm:text-4xl     /* tablet */
-    md:text-2xl     /* desktop */
-      /* grande */mt-2 text-sm text-white/70">
-                  {description}
-                </div>
+                <div className="mt-2 text-sm text-white/70">{description}</div>
               ) : null}
             </div>
 
@@ -394,9 +371,10 @@ function ProjectModal({
                     <div className="h-full w-full grid place-items-center text-white/60">Sin archivos</div>
                   ) : currentIsVideo ? (
                     <video
-                      src={current.url}
+                      src={normalizeCloudinaryVideo(current.url)}
                       controls
                       playsInline
+                      preload="metadata"
                       className="h-full w-full object-contain bg-black"
                       poster={poster}
                     />
@@ -429,7 +407,6 @@ function ProjectModal({
 
               <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
                 {items.map((it, idx) => {
-                
                   const itIsVideo = isVideoUrl(it.url);
                   const tPoster = pickPosterImage(it) || it.url;
 
@@ -477,6 +454,43 @@ function ProjectModal({
       </div>
     </div>
   );
+}
+
+/** ✅ Orden estable: primero esPortada=true, si no hay portadas => devuelve igual */
+function sortPortadas<T extends { esPortada?: boolean }>(arr: T[]) {
+  if (!Array.isArray(arr) || arr.length < 2) return arr || [];
+  const hasAny = arr.some((x) => !!x?.esPortada);
+  if (!hasAny) return arr;
+
+  const portadas: T[] = [];
+  const rest: T[] = [];
+  for (const x of arr) (x?.esPortada ? portadas : rest).push(x);
+  return [...portadas, ...rest];
+}
+
+/** ✅ Arma hasta 2 thumbs:
+ *  - primero portadas (máx 2)
+ *  - si falta, completa con no-portadas
+ *  - dedupe por _id/url
+ */
+function takeTop2PreferPortadas(items: ProjectThumb[]) {
+  const list = Array.isArray(items) ? items : [];
+  const seen = new Set<string>();
+  const deduped = list.filter((x) => {
+    const k = String((x as any)?._id || x?.url || "");
+    if (!k) return false;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+
+  const ordered = sortPortadas(deduped);
+  const portadas = ordered.filter((x) => !!x.esPortada).slice(0, 2);
+  if (portadas.length >= 2) return portadas;
+
+  const rest = ordered.filter((x) => !x.esPortada);
+  const fill = rest.slice(0, 2 - portadas.length);
+  return [...portadas, ...fill];
 }
 
 /** ---------- Card ---------- */
@@ -546,7 +560,6 @@ function ProjectCard({
   const more = Math.max(0, count - (showTwo ? 2 : 1));
 
   // ✅ clave: media siempre ocupa TODO el alto disponible del card
-  // (y el card “estira” con items-stretch en el grid)
   const MEDIA_BOX = "h-full min-h-[320px] md:min-h-[340px]";
 
   return (
@@ -577,7 +590,6 @@ function ProjectCard({
               {title}
             </div>
 
-            {/* ✅ menos padding arriba */}
             <div className="relative pt-7">
               <div style={{ fontFamily: "var(--font-battle)" }} className="text-3xl md:text-4xl text-white">
                 {title}
@@ -604,11 +616,8 @@ function ProjectCard({
             <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-white/80">
               {group.hasVideo ? (count > 1 ? "Foto + Video" : "Video") : "Foto"}
             </span>
-
-         
           </div>
 
-          {/* ✅ botón abajo siempre */}
           <button
             type="button"
             onClick={() => onOpen(group)}
