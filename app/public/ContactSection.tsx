@@ -98,7 +98,7 @@ export default function ContactSection({
                   select-none
                   drop-shadow-[0_22px_40px_rgba(0,0,0,0.55)]
                   w-[150px] sm:w-[350px] md:w-[350px] lg:w-[230px]
-                  -translate-y-8 sm:-translate-y-[35%] md:-translate-y-[45%] md:-translate-x-[80%] -translate-x-[48%]
+                  -translate-y-8 sm:-translate-y-[18%] md:-translate-y-[45%] md:-translate-x-[80%] -translate-x-[25%] -translate-y-[44%]
                   transition-transform duration-[900ms] ease-in-out
                   ${canOpenBio ? "hover:scale-[1.07]" : ""}
                   ${canOpenBio && pulseZoom ? "scale-[1.07]" : ""}
@@ -125,7 +125,7 @@ export default function ContactSection({
                   <div
                     className="
                       absolute
-                     -translate-y-[450%]  sm:-translate-y-[35%] md:-translate-y-[970%] md:-translate-x-[245%] -translate-x-[57%]
+                     -translate-y-[810%]  sm:-translate-y-[35%] md:-translate-y-[970%] md:-translate-x-[245%] -translate-x-[90%]
                       w-max
                     "
                   >
