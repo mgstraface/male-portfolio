@@ -142,22 +142,6 @@ export default async function HomePage() {
           subtitle="Una selección de fotos destacadas"
           items={carousel}
           sitting={sitting}
-          trainingTitle="Formación académica"
-          trainingIntro="Cursos"
-          trainingItems={[
-            "Introducción a la programación - [2022-2023]",
-            "Construct - [2023-2024]",
-            "Unreal Engine - [2023-2025]",
-            "Desarrollo web - [2025]",
-            "Contenidos audiovisuales - [2025-2026]",
-            "Inglés - B1"
-          ]}
-        />
-
-        <ProjectsSection title="Projects" subtitle="Selección de proyectos y sesiones" initial={pData as any} pageSize={6} />
-
-        <ContactSection
-          sittingContact={sittingContact}
           trainingTitle="Formación artística"
           trainingIntro="Estudios y experiencias:"
           trainingItems={[
@@ -167,6 +151,23 @@ export default async function HomePage() {
             "Universal Dance, San Lorenzo, Brasil, Mexico [2024-2026]",
             "Workshops instituto CDF, Rosario [Valentina Toranzo, Mati Napp, Sol Alonso, Edson SJ, Yabil Recamier, Milu Aldas, Pecas Conte]",
             "Instructorado Street Dance academia Street Beat [2025]",
+          ]}
+          
+        />
+
+        <ProjectsSection title="Projects" subtitle="Selección de proyectos y sesiones" initial={pData as any} pageSize={6} />
+
+        <ContactSection
+          sittingContact={sittingContact}
+         trainingTitle="Formación académica"
+          trainingIntro="Cursos"
+          trainingItems={[
+            "Introducción a la programación - [2022-2023]",
+            "Construct - [2023-2024]",
+            "Unreal Engine - [2023-2025]",
+            "Desarrollo web - [2025]",
+            "Contenidos audiovisuales - [2025-2026]",
+            "Inglés - B1"
           ]}
         />
       </div>

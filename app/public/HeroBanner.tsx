@@ -112,7 +112,10 @@ export default function HeroBanner({ item }: { item: MediaItem | null }) {
           style={{ fontFamily: "var(--font-nunito)" }}
           className="mt-3 text-sm leading-relaxed text-white/80"
         >
-          Creadora visual e instructora de street dance, con experiencia en proyectos creativos y comerciales, integrando narrativa, versatilidad y una identidad estética, sólida en cada colaboración.
+          Tengo 15 años y Soy de San Genaro - Santa Fe, Argentina.
+           Me dedico a la creación visual, programación, a la enseñanza de street dance, 
+           con experiencia en proyectos creativos y comerciales, integrando narrativa, versatilidad y una identidad estética, sólida en cada colaboración.
+         
         </p>
 
         <div className="mt-6 flex justify-end gap-3">
