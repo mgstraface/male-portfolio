@@ -23,7 +23,7 @@ export default function MediaCarousel({
   title: string;
   subtitle?: string;
   items: MediaItem[];
-  sitting?: MediaItem | null; // PNG recortada “sentada”
+  sitting?: MediaItem | null;
   trainingTitle?: string;
   trainingIntro?: string;
   trainingItems?: string[];
@@ -32,7 +32,6 @@ export default function MediaCarousel({
   const [paused, setPaused] = useState(false);
   const [openBio, setOpenBio] = useState(false);
 
-  // ✅ micro-animación para “llamar” el click (zoom suave constante)
   const [pulseZoom, setPulseZoom] = useState(false);
 
   const count = items.length;
@@ -60,11 +59,9 @@ export default function MediaCarousel({
     const id = window.setInterval(() => {
       setIndex((i) => (i + 1) % count);
     }, 3500);
-
     return () => window.clearInterval(id);
   }, [paused, canAutoplay, count]);
 
-  // ✅ Cerrar modal con ESC
   useEffect(() => {
     if (!openBio) return;
     const onKey = (e: KeyboardEvent) => {
@@ -76,10 +73,9 @@ export default function MediaCarousel({
 
   const canOpenBio = Boolean(trainingIntro) || (trainingItems?.length ?? 0) > 0;
 
-  // ✅ “zoom loop” suave constante (si se puede abrir el bio)
   useEffect(() => {
     if (!canOpenBio) return;
-    const id = window.setInterval(() => setPulseZoom((v) => !v), 1800);
+    const id = window.setInterval(() => setPulseZoom((v) => !v), 1700);
     return () => window.clearInterval(id);
   }, [canOpenBio]);
 
@@ -91,26 +87,19 @@ export default function MediaCarousel({
         overflow-visible
         rounded-1xl border border-white/10
         p-5 shadow-2xl
-
-        /* ✅ esto hace que el carousel “suba” y pueda solaparse con el hero */
         -mt-10 sm:-mt-14 md:-mt-16 lg:mt-0
       "
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      {/* ✅ Overlay “sentada” */}
+      {/* Sentada */}
       {sitting?.url ? (
         <div
           aria-hidden="true"
           className="absolute right-0 top-0 z-10 pointer-events-none"
-          style={
-            {
-              ["--sx" as any]: "55px", // mobile
-            } as React.CSSProperties
-          }
+          style={{ ["--sx" as any]: "55px" } as React.CSSProperties}
         >
           <div className="sm:[--sx:85px] md:[--sx:140px] lg:[--sx:190px]">
-            {/* ✅ Click/hover SOLO en la imagen */}
             <button
               type="button"
               disabled={!canOpenBio}
@@ -124,6 +113,7 @@ export default function MediaCarousel({
               aria-label={canOpenBio ? "Más info sobre mí" : "Imagen decorativa"}
               title={canOpenBio ? "Más info sobre mí" : undefined}
             >
+              {/* IMG */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={sitting.url}
@@ -135,43 +125,50 @@ export default function MediaCarousel({
                   drop-shadow-[0_22px_40px_rgba(0,0,0,0.55)]
                   w-[150px] sm:w-[350px] md:w-[350px] lg:w-[230px]
                   -translate-y-8 sm:-translate-y-[35%] md:-translate-y-[18%] md:-translate-x-[120%] -translate-x-[48%]
-                  transition-transform duration-[900ms] ease-out
-                  ${canOpenBio ? "hover:scale-[1.05]" : ""}
-                  ${canOpenBio && pulseZoom ? "scale-[1.05]" : ""}
+                  transition-transform duration-[900ms] ease-in-out
+                  ${canOpenBio ? "hover:scale-[1.07]" : ""}
+                  ${canOpenBio && pulseZoom ? "scale-[1.07]" : ""}
                 `}
               />
 
-              {/* ✅ TEXTO (no botón) sobre la imagen, misma fuente que DESTACADAS */}
+              {/* TEXTO encima / “entre las piernas” */}
               {canOpenBio ? (
                 <div
                   className="
                     pointer-events-none
-                    absolute
-                    right-0
-                    top-[58%]
-                    -translate-y-1/2
-
-                    /* acomodalo fino según tu gusto */
-                    mr-2 sm:mr-4 md:mr-6
-
-                    leading-none
+                    absolute z-20
+                    left-1/2
+                    -translate-x-1/2
                     text-red-600
-                    drop-shadow-[0_10px_20px_rgba(0,0,0,0.55)]
+                    italic leading-none
+                    text-center
                     select-none
+                    drop-shadow-[0_14px_24px_rgba(0,0,0,0.65)]
+                    opacity-95
                   "
                   style={{ fontFamily: "var(--font-thirstycaps)" }}
                 >
-                  <div className="text-[26px] sm:text-[32px] md:text-[36px] italic">
-                    MÁS INFO
-                  </div>
-                  <div className="text-[22px] sm:text-[28px] md:text-[32px] italic -mt-1">
-                    SOBRE MÍ
+                  <div
+                    className="
+                      absolute
+                     -translate-y-[450%]  sm:-translate-y-[35%] md:-translate-y-[620%] md:-translate-x-[245%] -translate-x-[57%]
+                      w-max
+                    "
+                  >
+                    <div style={{backgroundColor:"#0000002f", borderRadius:"5px"}} className="text-[20px] sm:text-[24px] md:text-[26px]">
+                      MÁS SOBRE MÍ
+                    </div>
+                    {/* <div className="text-[16px] sm:text-[20px] md:text-[22px] -mt-1">
+                      SOBRE MÍ
+                    </div> */}
                   </div>
                 </div>
               ) : null}
+
+              <span className="sr-only">Más info sobre mí</span>
             </button>
 
-            {/* sombra suave */}
+            {/* sombra */}
             <div
               className="
                 pointer-events-none
@@ -201,18 +198,14 @@ export default function MediaCarousel({
         <p className="mt-4 text-sm text-white/60">No hay fotos para mostrar todavía.</p>
       ) : (
         <>
-          {/* VIEWPORT */}
           <div
             className="
               mt-4
               overflow-hidden
               border border-white/10
               bg-black
-
-              /* ✅ MOBILE full-bleed */
               w-screen
               relative left-1/2 -translate-x-1/2
-              /* ✅ DESKTOP vuelve a normal */
               sm:w-full sm:left-auto sm:translate-x-0
             "
           >
@@ -237,17 +230,12 @@ export default function MediaCarousel({
             </div>
           </div>
 
-          {/* ✅ CONTROLES ABAJO */}
           {count > 1 && (
             <div className="mt-3 flex flex-col gap-3">
               <div className="flex items-center justify-end gap-2">
                 <button
                   onClick={prev}
-                  className="
-                    rounded-xl border border-white/15 bg-black/40
-                    px-3 py-2 text-sm text-white
-                    hover:bg-white/10
-                  "
+                  className="rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white hover:bg-white/10"
                   type="button"
                   aria-label="Anterior"
                   title="Anterior"
@@ -256,11 +244,7 @@ export default function MediaCarousel({
                 </button>
                 <button
                   onClick={next}
-                  className="
-                    rounded-xl border border-white/15 bg-black/40
-                    px-3 py-2 text-sm text-white
-                    hover:bg-white/10
-                  "
+                  className="rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white hover:bg-white/10"
                   type="button"
                   aria-label="Siguiente"
                   title="Siguiente"
@@ -277,14 +261,12 @@ export default function MediaCarousel({
                       onClick={() => setIndex(i)}
                       type="button"
                       aria-label={`Ir a ${i + 1}`}
-                      className={`
-                        h-2.5 w-2.5 rounded-full transition
-                        ${i === index ? "bg-white" : "bg-white/25 hover:bg-white/40"}
-                      `}
+                      className={`h-2.5 w-2.5 rounded-full transition ${
+                        i === index ? "bg-white" : "bg-white/25 hover:bg-white/40"
+                      }`}
                     />
                   ))}
                 </div>
-
                 <div className="text-xs text-white/50">Autoplay {paused ? "(pausado)" : "(activo)"}</div>
               </div>
             </div>
@@ -292,7 +274,7 @@ export default function MediaCarousel({
         </>
       )}
 
-      {/* ✅ MODAL Formación */}
+      {/* MODAL */}
       {openBio ? (
         <div
           className="fixed inset-0 z-[999] flex items-end sm:items-center justify-center"
@@ -328,11 +310,7 @@ export default function MediaCarousel({
               <button
                 type="button"
                 onClick={() => setOpenBio(false)}
-                className="
-                  rounded-xl border border-white/15 bg-white/5
-                  px-3 py-2 text-sm text-white
-                  hover:bg-white/10
-                "
+                className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white hover:bg-white/10"
                 aria-label="Cerrar"
                 title="Cerrar"
               >
@@ -354,11 +332,7 @@ export default function MediaCarousel({
               <button
                 type="button"
                 onClick={() => setOpenBio(false)}
-                className="
-                  rounded-xl border border-white/15 bg-white/5
-                  px-4 py-2 text-sm text-white
-                  hover:bg-white/10
-                "
+                className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10"
               >
                 Cerrar
               </button>

@@ -24,8 +24,13 @@ export default function ContactSection({
   trainingItems?: string[];
 }) {
   const [openBio, setOpenBio] = useState(false);
-
+  const [pulseZoom, setPulseZoom] = useState(false);
   const canOpenBio = Boolean(trainingIntro) || (trainingItems?.length ?? 0) > 0;
+  useEffect(() => {
+    if (!canOpenBio) return;
+    const id = window.setInterval(() => setPulseZoom((v) => !v), 1700);
+    return () => window.clearInterval(id);
+  }, [canOpenBio]);
 
   // ✅ Cerrar modal con ESC
   useEffect(() => {
@@ -69,32 +74,73 @@ export default function ContactSection({
                 className="relative w-fit pointer-events-auto"
                 style={{ transform: "translateX(var(--sx))" }}
               >
-                <button
-                  type="button"
-                  disabled={!canOpenBio}
-                  onClick={() => canOpenBio && setOpenBio(true)}
-                  className={`
-                    block focus:outline-none
-                    ${canOpenBio ? "cursor-pointer" : "cursor-default"}
-                  `}
-                  aria-label={canOpenBio ? "Ver más formación" : "Imagen decorativa"}
-                  title={canOpenBio ? "Ver más formación" : undefined}
+                 <button
+              type="button"
+              disabled={!canOpenBio}
+              onClick={() => canOpenBio && setOpenBio(true)}
+              className={`
+                pointer-events-auto
+                focus:outline-none
+                relative
+                ${canOpenBio ? "cursor-pointer" : "cursor-default"}
+              `}
+              aria-label={canOpenBio ? "Más info sobre mí" : "Imagen decorativa"}
+              title={canOpenBio ? "Más info sobre mí" : undefined}
+            >
+              {/* IMG */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={sittingContact.url}
+                alt={sittingContact.title || "sentada"}
+                loading="lazy"
+                className={`
+                  relative left-1/2
+                  select-none
+                  drop-shadow-[0_22px_40px_rgba(0,0,0,0.55)]
+                  w-[150px] sm:w-[350px] md:w-[350px] lg:w-[230px]
+                  -translate-y-8 sm:-translate-y-[35%] md:-translate-y-[45%] md:-translate-x-[80%] -translate-x-[48%]
+                  transition-transform duration-[900ms] ease-in-out
+                  ${canOpenBio ? "hover:scale-[1.07]" : ""}
+                  ${canOpenBio && pulseZoom ? "scale-[1.07]" : ""}
+                `}
+              />
+
+              {/* TEXTO encima / “entre las piernas” */}
+              {canOpenBio ? (
+                <div
+                  className="
+                    pointer-events-none
+                    absolute z-20
+                    left-1/2
+                    -translate-x-1/2
+                    text-red-600
+                    italic leading-none
+                    text-center
+                    select-none
+                    drop-shadow-[0_14px_24px_rgba(0,0,0,0.65)]
+                    opacity-95
+                  "
+                  style={{ fontFamily: "var(--font-thirstycaps)" }}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={sittingContact.url}
-                    alt={sittingContact.title || "sentada contacto"}
-                    loading="lazy"
-                    className={`
-                      select-none
-                      drop-shadow-[0_22px_40px_rgba(0,0,0,0.55)]
-                      w-[150px] sm:w-[260px] md:w-[200px] lg:w-[230px]
-                      translate-y-[-42%] sm:translate-y-[-45%] md:translate-y-[-42%] lg:translate-y-[-44%]
-                      transition-transform duration-200 ease-out
-                      ${canOpenBio ? "hover:scale-[1.04]" : ""}
-                    `}
-                  />
-                </button>
+                  <div
+                    className="
+                      absolute
+                     -translate-y-[450%]  sm:-translate-y-[35%] md:-translate-y-[970%] md:-translate-x-[245%] -translate-x-[57%]
+                      w-max
+                    "
+                  >
+                    <div style={{backgroundColor:"#0000002f", borderRadius:"5px"}} className="text-[20px] sm:text-[24px] md:text-[26px]">
+                      MÁS SOBRE MÍ
+                    </div>
+                    {/* <div className="text-[16px] sm:text-[20px] md:text-[22px] -mt-1">
+                      SOBRE MÍ
+                    </div> */}
+                  </div>
+                </div>
+              ) : null}
+
+              <span className="sr-only">Más info sobre mí</span>
+            </button>
 
                 {/* sombra suave (apoyo) */}
                 <div
