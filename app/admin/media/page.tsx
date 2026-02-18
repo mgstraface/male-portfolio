@@ -538,7 +538,8 @@ export default function AdminMediaPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full overflow-x-hidden">
+
       <div className="flex items-start justify-between gap-4">
         <div>
           <Link href="/admin" className="text-sm text-gray-600 hover:underline">
@@ -796,7 +797,8 @@ export default function AdminMediaPage() {
         ) : filteredItems.length === 0 ? (
           <p className="mt-4 text-sm text-gray-600">No hay resultados.</p>
         ) : (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 w-full min-w-0">
+
             {filteredItems.map((m) => {
               const catName = typeof m.category === "string" ? m.category : ((m.category as any)?.name ?? "-");
               const isEditing = editingId === m._id;
@@ -804,7 +806,8 @@ export default function AdminMediaPage() {
                 catName.toLowerCase().trim() === "projects" || catName.toLowerCase().trim() === "project";
 
               return (
-                <div key={m._id} className="rounded-2xl border bg-white p-3">
+                <div key={m._id} className="rounded-2xl border bg-white p-3 w-full min-w-0 overflow-hidden">
+
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-xs text-gray-500">{catName}</div>
                     {!isEditing && thisIsProjects && m.esPortada && (
