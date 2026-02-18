@@ -143,8 +143,9 @@ export default async function HomePage() {
           items={carousel}
           sitting={sitting}
           trainingTitle="Formación artística"
-          trainingIntro="Estudios y experiencias:"
+          trainingIntro="Estudios y experiencia:"
           trainingItems={[
+            "15 años - 1.47mts",
             "Academia: Y si bailamos - [2014-2023]",
             "Grupo competencia Impacto Crew, Academia Estilo Urbano - [2023-ACTUALIDAD]",
             "Competencia 3.3 Rosario [2023]",
