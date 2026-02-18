@@ -113,7 +113,7 @@ export default function HeroBanner({ item }: { item: MediaItem | null }) {
           className="mt-3 text-sm leading-relaxed text-white/80"
         >
           Tengo 15 años y Soy de San Genaro - Santa Fe, Argentina.
-           Me dedico a la creación visual, programación, a la enseñanza de street dance, 
+           Me dedico a la creación visual, a la enseñanza y ejecución de street dance, 
            con experiencia en proyectos creativos y comerciales, integrando narrativa, versatilidad y una identidad estética, sólida en cada colaboración.
          
         </p>
