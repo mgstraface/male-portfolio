@@ -7,6 +7,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+
 export async function cloudinaryDestroy(
   publicId: string,
   resourceType: "image" | "video" = "image"
