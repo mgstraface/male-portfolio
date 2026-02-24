@@ -9,6 +9,9 @@ cloudinary.config({
 
 
 
+
+
+
 export async function cloudinaryDestroy(
   publicId: string,
   resourceType: "image" | "video" = "image"
