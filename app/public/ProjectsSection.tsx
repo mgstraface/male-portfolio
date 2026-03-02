@@ -815,6 +815,7 @@ export default function ProjectsSection({
         </div>
       )}
 
+
       {activeGroup && (
         <ProjectModal
           open={open}
