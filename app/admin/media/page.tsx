@@ -28,15 +28,12 @@ type UploadItem = {
 type MediaItem = {
   _id: string;
 
-  // legacy
   title?: string;
 
-  // ✅ projects
   album?: string | null;
   name?: string;
   description?: string;
 
-  // ✅ NEW
   esPortada?: boolean;
 
   type: "photo" | "video";
@@ -54,6 +51,11 @@ type CategoriesResponse = { ok: true; categories: Category[] } | { ok: false; er
 type MediaListResponse = { ok: true; items: MediaItem[] } | { ok: false; error: string };
 type MediaOneResponse = { ok: true; item: MediaItem } | { ok: false; error: string };
 
+function isVideoItem(item: { type?: string; resourceType?: string; url?: string }) {
+  if (item.resourceType === "video" || item.type === "video") return true;
+  return /\.(mp4|webm|mov|m4v)$/i.test(item.url || "");
+}
+
 export default function AdminMediaPage() {
   const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
   const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "";
@@ -65,14 +67,11 @@ export default function AdminMediaPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // form
   const [type, setType] = useState<"photo" | "video">("photo");
   const [categoryId, setCategoryId] = useState<string>("");
 
-  // legacy title
   const [title, setTitle] = useState("");
 
-  // ✅ projects fields
   const [album, setAlbum] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -80,14 +79,11 @@ export default function AdminMediaPage() {
   const [isFeatured, setIsFeatured] = useState(false);
   const [fullVideoUrl, setFullVideoUrl] = useState("");
 
-  // multiple uploads
   const [uploads, setUploads] = useState<UploadItem[]>([]);
 
-  // inline edit
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
 
-  // ✅ projects inline edit
   const [editAlbum, setEditAlbum] = useState("");
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -95,10 +91,8 @@ export default function AdminMediaPage() {
   const [editFeatured, setEditFeatured] = useState(false);
   const [editFullVideoUrl, setEditFullVideoUrl] = useState("");
 
-  // ✅ Portada SOLO en edición
   const [editEsPortada, setEditEsPortada] = useState(false);
 
-  // ✅ FILTERS
   const [q, setQ] = useState("");
   const [filterType, setFilterType] = useState<"all" | "photo" | "video">("all");
   const [filterCategoryId, setFilterCategoryId] = useState<string>("all");
@@ -111,7 +105,6 @@ export default function AdminMediaPage() {
     return categories.find((c) => c._id === categoryId)?.name || "sin-categoria";
   }, [categories, categoryId]);
 
-  // ✅ detectar Projects por nombre de categoría
   const isProjectsCategory = useMemo(() => {
     const n = selectedCategoryName.toLowerCase().trim();
     return n === "projects" || n === "project";
@@ -168,7 +161,6 @@ export default function AdminMediaPage() {
     setUploads([]);
     setFullVideoUrl("");
 
-    // reset de campos
     setTitle("");
     setAlbum("");
     setName("");
@@ -242,7 +234,6 @@ export default function AdminMediaPage() {
       return setError("El link del video completo debe empezar con http:// o https://");
     }
 
-    // ✅ validación projects (exigimos Album/Name/Desc)
     if (isProjectsCategory) {
       if (!album.trim()) return setError("Para Projects, completá el Album");
       if (!name.trim()) return setError("Para Projects, completá el Name");
@@ -254,17 +245,11 @@ export default function AdminMediaPage() {
       const results = await Promise.all(
         uploads.map(async (u) => {
           const payload: any = {
-            // legacy
             title: title.trim() || u.originalFilename || "",
 
-            // ✅ projects
             album: album.trim() || undefined,
             name: isProjectsCategory ? name.trim() : undefined,
             description: isProjectsCategory ? description.trim() : undefined,
-
-            // ✅ IMPORTANTE:
-            // NO seteamos portada al crear batch (se elige luego editando)
-            // esPortada: undefined
 
             type,
             category: categoryId,
@@ -290,7 +275,6 @@ export default function AdminMediaPage() {
 
       setItems((prev) => [...results, ...prev]);
 
-      // reset
       setTitle("");
       setAlbum("");
       setName("");
@@ -416,18 +400,12 @@ export default function AdminMediaPage() {
   const startEdit = (m: MediaItem) => {
     setEditingId(m._id);
 
-    // legacy
     setEditTitle(m.title || "");
-
-    // ✅ projects
     setEditAlbum((m.album as any) || "");
     setEditName(m.name || "");
     setEditDescription(m.description || "");
-
     setEditFeatured(!!m.isFeatured);
     setEditFullVideoUrl(m.fullVideoUrl || "");
-
-    // ✅ portada (solo edición)
     setEditEsPortada(!!m.esPortada);
   };
 
@@ -468,17 +446,11 @@ export default function AdminMediaPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          // legacy
           title: editTitle.trim(),
-
-          // ✅ projects
           album: currentIsProjects ? editAlbum.trim() : undefined,
           name: currentIsProjects ? editName.trim() : undefined,
           description: currentIsProjects ? editDescription.trim() : undefined,
-
-          // ✅ portada SOLO acá
           esPortada: currentIsProjects ? editEsPortada : undefined,
-
           isFeatured: editFeatured,
           fullVideoUrl: editFullVideoUrl.trim(),
         }),
@@ -539,7 +511,6 @@ export default function AdminMediaPage() {
 
   return (
     <div className="space-y-6 max-w-full overflow-x-hidden">
-
       <div className="flex items-start justify-between gap-4">
         <div>
           <Link href="/admin" className="text-sm text-gray-600 hover:underline">
@@ -562,7 +533,6 @@ export default function AdminMediaPage() {
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
-      {/* CREATE */}
       <div className="rounded-2xl border bg-white p-5">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-medium">Nueva carga</h2>
@@ -615,7 +585,7 @@ export default function AdminMediaPage() {
               ))}
             </select>
             <p className="mt-1 text-xs text-gray-500">
-              Subidas irán a: <span className="font-mono">{folder}</span>
+              Subidas irán a: <span className="font-mono break-all">{folder}</span>
             </p>
           </div>
 
@@ -709,28 +679,39 @@ export default function AdminMediaPage() {
             <div className="text-sm font-medium">Preview subidos</div>
 
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {uploads.map((u) => (
-                <div key={u.publicId} className="rounded-xl border bg-white p-2">
-                  <div className="text-xs text-gray-500 truncate">{u.originalFilename || u.publicId}</div>
-                  <div className="mt-2 overflow-hidden rounded-lg border bg-gray-50">
-                    {u.resourceType === "image" ? (
-                      <img src={u.url} alt="preview" className="h-40 w-full object-cover" />
-                    ) : (
-                      <video src={u.url} controls className="h-40 w-full object-cover" />
-                    )}
+              {uploads.map((u) => {
+                const isVideo = isVideoItem(u);
+                return (
+                  <div key={u.publicId} className="rounded-xl border bg-white p-2 min-w-0 overflow-hidden">
+                    <div className="text-xs text-gray-500 truncate">{u.originalFilename || u.publicId}</div>
+
+                    <div className="mt-2 overflow-hidden rounded-lg border bg-gray-50">
+                      {!isVideo ? (
+                        <img src={u.url} alt="preview" className="h-40 w-full object-cover" loading="lazy" />
+                      ) : (
+                        <video
+                          src={u.url}
+                          poster={u.thumbnail || undefined}
+                          controls
+                          playsInline
+                          preload="none"
+                          className="h-40 w-full object-cover"
+                        />
+                      )}
+                    </div>
+
+                    <div className="mt-2 text-[11px] text-gray-600 min-w-0">
+                      <div className="truncate">publicId: {u.publicId}</div>
+                      <div className="truncate">resourceType: {u.resourceType}</div>
+                    </div>
                   </div>
-                  <div className="mt-2 text-[11px] text-gray-600">
-                    <div className="truncate">publicId: {u.publicId}</div>
-                    <div>resourceType: {u.resourceType}</div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
       </div>
 
-      {/* LIST */}
       <div className="rounded-2xl border bg-white p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
@@ -798,16 +779,15 @@ export default function AdminMediaPage() {
           <p className="mt-4 text-sm text-gray-600">No hay resultados.</p>
         ) : (
           <div className="mt-4 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 w-full min-w-0">
-
             {filteredItems.map((m) => {
               const catName = typeof m.category === "string" ? m.category : ((m.category as any)?.name ?? "-");
               const isEditing = editingId === m._id;
               const thisIsProjects =
                 catName.toLowerCase().trim() === "projects" || catName.toLowerCase().trim() === "project";
+              const isVideo = isVideoItem(m);
 
               return (
                 <div key={m._id} className="rounded-2xl border bg-white p-3 w-full min-w-0 overflow-hidden">
-
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-xs text-gray-500">{catName}</div>
                     {!isEditing && thisIsProjects && m.esPortada && (
@@ -817,13 +797,13 @@ export default function AdminMediaPage() {
 
                   {!isEditing ? (
                     <>
-                      <div className="mt-1 text-sm font-medium">
+                      <div className="mt-1 text-sm font-medium break-words">
                         {thisIsProjects ? m.name || "(sin name)" : m.title || "(sin título)"}
                       </div>
 
                       {thisIsProjects && m.album && (
-                        <div className="mt-1 text-xs text-gray-600">
-                          Album: <span className="font-mono">{m.album}</span>
+                        <div className="mt-1 text-xs text-gray-600 min-w-0">
+                          Album: <span className="font-mono break-words">{m.album}</span>
                         </div>
                       )}
                     </>
@@ -873,20 +853,32 @@ export default function AdminMediaPage() {
                   )}
 
                   {!isEditing && thisIsProjects && m.description && (
-                    <p className="mt-1 text-sm text-gray-600 line-clamp-3">{m.description}</p>
+                    <p className="mt-1 text-sm text-gray-600 line-clamp-3 break-words">{m.description}</p>
                   )}
 
                   <div className="mt-3 overflow-hidden rounded-xl border bg-gray-50">
-                    {m.type === "photo" ? (
-                      <img src={m.url} alt={m.title || m.name || "media"} className="h-48 w-full object-cover" />
+                    {!isVideo ? (
+                      <img
+                        src={m.url}
+                        alt={m.title || m.name || "media"}
+                        className="h-48 w-full object-cover"
+                        loading="lazy"
+                      />
                     ) : (
-                      <video src={m.url} controls className="h-48 w-full object-cover" />
+                      <video
+                        src={m.url}
+                        poster={m.thumbnail || undefined}
+                        controls
+                        playsInline
+                        preload="none"
+                        className="h-48 w-full object-cover"
+                      />
                     )}
                   </div>
 
                   {m.type === "video" && !isEditing && m.fullVideoUrl && (
                     <a
-                      className="mt-2 block text-sm text-blue-600 hover:underline"
+                      className="mt-2 block text-sm text-blue-600 hover:underline break-all"
                       href={m.fullVideoUrl}
                       target="_blank"
                       rel="noreferrer"
@@ -960,9 +952,9 @@ export default function AdminMediaPage() {
                     </div>
                   </div>
 
-                  <div className="mt-2 text-[11px] text-gray-600">
+                  <div className="mt-2 text-[11px] text-gray-600 min-w-0">
                     <div className="truncate">publicId: {m.publicId || "-"}</div>
-                    <div>resourceType: {m.resourceType || "-"}</div>
+                    <div className="truncate">resourceType: {m.resourceType || "-"}</div>
                   </div>
                 </div>
               );
