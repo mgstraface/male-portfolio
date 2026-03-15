@@ -952,8 +952,7 @@ export default function AdminMediaPage() {
                     </div>
                   </div>
                   
-                  
-                  
+
                   <div className="mt-2 text-[11px] text-gray-600 min-w-0">
                     <div className="truncate">publicId: {m.publicId || "-"}</div>
                     <div className="truncate">resourceType: {m.resourceType || "-"}</div>
